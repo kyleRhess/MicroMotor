@@ -1,4 +1,4 @@
-update=11/4/2020 7:10:04 PM
+update=11/7/2020 11:46:09 PM
 version=1
 last_client=kicad
 [general]
@@ -27,13 +27,13 @@ version=1
 PageLayoutDescrFile=
 LastNetListRead=MicroMotor.net
 CopperLayerCount=4
-BoardThickness=1.6
+BoardThickness=1.74
 AllowMicroVias=0
 AllowBlindVias=0
 RequireCourtyardDefinitions=0
 ProhibitOverlappingCourtyards=1
-MinTrackWidth=0.2
-MinViaDiameter=0.4
+MinTrackWidth=0.13
+MinViaDiameter=0.3
 MinViaDrill=0.3
 MinMicroViaDiameter=0.2
 MinMicroViaDrill=0.09999999999999999
@@ -74,11 +74,11 @@ Type=0
 Enabled=1
 [pcbnew/Layer.In1.Cu]
 Name=In1.Cu
-Type=0
+Type=1
 Enabled=1
 [pcbnew/Layer.In2.Cu]
 Name=In2.Cu
-Type=0
+Type=1
 Enabled=1
 [pcbnew/Layer.In3.Cu]
 Name=In3.Cu
