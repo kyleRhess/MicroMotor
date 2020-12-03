@@ -3,9 +3,7 @@
 #include "stm32f4xx.h"
 #include "Serial.h"
 #include "system.h"
-
-#define FULL_RX 64
-#define HALF_RX FULL_RX / 2
+#include "hall.h"
 
 volatile uint8_t toggle = 0;
 UART_HandleTypeDef s_UARTHandle = { .Instance = USART1 };
@@ -16,12 +14,14 @@ DMA_HandleTypeDef hdma_usart1_tx;
 __IO ITStatus UartReady				= SET;
 __IO ITStatus UartRxCmdReady 		= RESET;
 
-uint8_t dma_buffer_tx[2048];
-uint8_t dma_buffer_rx[2048];
+uint8_t dma_buffer_tx[FULL_RX*2];
+uint8_t dma_buffer_rx[FULL_RX*2];
 uint32_t dma_tx_idx = 0;
 uint32_t dma_rx_idx = 0;
 uint32_t dma_rx_idxLast = 0;
 uint32_t dma_tx_idxLast = 0;
+
+float pwm_freq_rx = 1.0f;
 
 int InitSerial(uint32_t baudrate, uint32_t stopbits, uint32_t datasize, uint32_t parity)
 {
@@ -38,7 +38,6 @@ int InitSerial(uint32_t baudrate, uint32_t stopbits, uint32_t datasize, uint32_t
 	s_UARTHandle.Init.OverSampling 	= UART_OVERSAMPLING_16;
 	rc = HAL_UART_Init(&s_UARTHandle);
 
-	datMsg.msgCnt 	= 0;
 	serialODR 		= 50;
 	rxIndexA 		= 0;
 	rxIndexB 		= 0;
@@ -76,14 +75,47 @@ void tx_serial_data(uint8_t* pData, uint16_t Size)
 	HAL_UART_Transmit_DMA(&s_UARTHandle, pData, Size);
 }
 
-uint8_t calcCRC(uint8_t datArr[], size_t size)
+static uint32_t crc32_for_byte(uint32_t r)
 {
-	uint32_t crc = 0;
-	for(size_t i = 0; i < size-1; i++)
-		crc += datArr[i];
-	crc = (0xff - (crc & 0x000000ff));
-	return (uint8_t)crc;
+	for(int j = 0; j < 8; ++j)
+		r = (r & 1? 0: (uint32_t)0xEDB88320L) ^ r >> 1;
+	return r ^ (uint32_t)0xFF000000L;
 }
+
+void crc32_(const void *data, size_t n_bytes, uint32_t* crc)
+{
+  static uint32_t table[0x100];
+  if(!*table)
+    for(size_t i = 0; i < 0x100; ++i)
+      table[i] = crc32_for_byte(i);
+  for(size_t i = 0; i < n_bytes; ++i)
+    *crc = table[(uint8_t)*crc ^ ((uint8_t*)data)[i]] ^ *crc >> 8;
+}
+
+void crc32(const void *data, size_t n_bytes, uint32_t* crc)
+{
+	uint32_t sum = 0;
+	for(size_t i = 0; i < n_bytes; ++i)
+		sum += ((uint8_t*)data)[i];
+	*crc = sum;
+}
+
+//int main(int ac, char** av) {
+//  FILE *fp;
+//  char buf[1L << 15];
+//  for(int i = ac > 1; i < ac; ++i)
+//    if((fp = i? fopen(av[i], "rb"): stdin)) {
+//      uint32_t crc = 0;
+//      while(!feof(fp) && !ferror(fp))
+//        crc32(buf, fread(buf, 1, sizeof(buf), fp), &crc);
+//      if(!ferror(fp))
+//        printf("%08x%s%s\n", crc, ac > 2? "\t": "", ac > 2? av[i]: "");
+//      if(i)
+//        fclose(fp);
+//    }
+//  return 0;
+//}
+
 
 
 /**
@@ -110,6 +142,39 @@ void DMA2_Stream7_IRQHandler(void)
   HAL_DMA_IRQHandler(&hdma_usart1_tx);
 }
 
+static void proc_command(uint32_t command, uint32_t param)
+{
+	pwm_freq_rx = (float)command;
+	if (command == param)
+	{
+		if(command == 0xAF)
+		{
+			if(pwm_duty < 0.0f)
+			{
+				pwm_inc = PWM_INC_F;
+				pwm_duty += 0.5f;
+			}
+			else
+			{
+				pwm_inc = -PWM_INC_F;
+				pwm_duty -= 0.5f;
+			}
+		}
+		else
+		{
+			WritePin(GPIOB, GPIO_DIS_PIN, !ReadPin(GPIOB, GPIO_DIS_PIN));
+		}
+	}
+
+//	switch (command)
+//	{
+//		case 0xabcd:
+//			WritePin(GPIOB, GPIO_DIS_PIN, !ReadPin(GPIOB, GPIO_DIS_PIN));
+//			break;
+//		default:
+//			break;
+//	}
+}
 
 /* USER CODE BEGIN 1 */
 /*
@@ -135,8 +200,19 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	memcpy(&dma_buffer_tx[0], &dma_buffer_rx[HALF_RX], HALF_RX);
-	HAL_UART_Transmit_DMA(huart, &dma_buffer_tx[0], HALF_RX);
+	static uint32_t thiscrc = 0;
+	static uint32_t rxCrc = 0;
+
+	crc32(&dma_buffer_rx[0], FULL_RX, &thiscrc);
+
+	rxCrc = (dma_buffer_rx[FULL_RX - 4] << 24) |
+			(dma_buffer_rx[FULL_RX - 3] << 16) |
+			(dma_buffer_rx[FULL_RX - 2] << 8) |
+			(dma_buffer_rx[FULL_RX - 1] << 0);
+
+	proc_command((uint32_t)dma_buffer_rx[0], (uint32_t)dma_buffer_rx[63]);
+
+//	pwm_freq_rx = dma_buffer_rx[0]
 
 	HAL_UART_Receive_DMA(huart, &dma_buffer_rx[0], FULL_RX);
 	dma_rx_idx++;
@@ -144,8 +220,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 {
-	memcpy(&dma_buffer_tx[0], &dma_buffer_rx[0], HALF_RX);
-	HAL_UART_Transmit_DMA(huart, &dma_buffer_tx[0], HALF_RX);
+	__NOP();
 }
 
 void UART_DMATransmitCplt(DMA_HandleTypeDef *hdma)

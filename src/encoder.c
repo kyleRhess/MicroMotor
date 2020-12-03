@@ -49,7 +49,9 @@ void quadrature_timer_init(TIM_HandleTypeDef *timer)
 void EXTI15_10_IRQHandler(void)
 {
 	HAL_GPIO_EXTI_IRQHandler(ENCODER_Z_PIN);
-	__NOP();
+	HAL_GPIO_EXTI_IRQHandler(HALL_A_PIN);
+	HAL_GPIO_EXTI_IRQHandler(HALL_B_PIN);
+	HAL_GPIO_EXTI_IRQHandler(HALL_C_PIN);
 }
 
 void Encoder_Z_Init(void)
@@ -62,7 +64,7 @@ void Encoder_Z_Init(void)
 	gZPin.Speed 	= GPIO_SPEED_HIGH;
 	HAL_GPIO_Init(ENCODER_Z_PORT, &gZPin);
 	/* EXTI interrupt init*/
-	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 1);
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 

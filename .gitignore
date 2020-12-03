@@ -192,3 +192,6 @@ bom/
 out/
 
 # End of https://www.gitignore.io/api/kicad
+talking.py
+talking.pz.txt
+.vscode/launch.json

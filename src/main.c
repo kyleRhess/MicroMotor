@@ -45,6 +45,8 @@
 #include "SPI.h"
 #include "Serial.h"
 #include "encoder.h"
+#include "hall.h"
+#include "PID.h"
 #include "diag/Trace.h"
 #include "cmsis_device.h"
 
@@ -61,8 +63,13 @@ static float 	timeElapMin 			= 0.0f;
 static float deltaDegrees	 			= 0.0f;
 static float degreesPsec	 			= 0.0f;
 
+float pwm_duty = 0.0f;
+float pwm_inc = PWM_INC_F;
+
 // PWM timer stuff
 PWM_Out PWMtimer;
+
+PID_Controller speedControl;
 
 // Function declarations
 static void setHighSystemClk(void);
@@ -76,6 +83,26 @@ static void MX_GPIO_Init(void);
 #pragma GCC diagnostic ignored "-Wmissing-declarations"
 #pragma GCC diagnostic ignored "-Wreturn-type"
 
+
+static void set_motor_speed(float speed)
+{
+
+#ifdef BI_POLAR
+	if(speed < -100.0f)
+		speed = -100.0f;
+	if(speed >  100.0f)
+		speed =  100.0f;
+
+	PWM_adjust_DutyCycle(&PWMtimer.timer, ((speed*0.5f) + 50.0f));
+#else
+	if(speed < 0.0f)
+		set_direction(DRIVE_BAKWARD);
+	else
+		set_direction(DRIVE_FORWARD);
+
+	PWM_adjust_DutyCycle(&PWMtimer.timer, fabsf(speed));
+#endif
+}
 
 int main(int argc, char* argv[])
 {
@@ -100,21 +127,83 @@ int main(int argc, char* argv[])
 	RCC->AHB1ENR 	|= RCC_AHB1ENR_GPIOAEN;
 	RCC->AHB1ENR 	|= RCC_AHB1ENR_GPIOBEN;
 
+	// MUX pins setup
+	setMuxState(MUX_C, MUX_STATE_Z);
+	setMuxState(MUX_B, MUX_STATE_Z);
+	setMuxState(MUX_A, MUX_STATE_Z);
+	GPIO_InitTypeDef gMuxPins_0_2;
+	gMuxPins_0_2.Pin 	= GPIO_S0_PIN | GPIO_S1_PIN | GPIO_S2_PIN | GPIO_ALEN_PIN | GPIO_BLEN_PIN;
+	gMuxPins_0_2.Mode 	= GPIO_MODE_OUTPUT_PP;
+	gMuxPins_0_2.Pull 	= GPIO_PULLDOWN;
+	gMuxPins_0_2.Speed 	= GPIO_SPEED_HIGH;
+	HAL_GPIO_Init(GPIOC, &gMuxPins_0_2);
+	GPIO_InitTypeDef gMuxPins_3;
+	gMuxPins_3.Pin 	= GPIO_S3_PIN;
+	gMuxPins_3.Mode 	= GPIO_MODE_OUTPUT_PP;
+	gMuxPins_3.Pull 	= GPIO_PULLDOWN;
+	gMuxPins_3.Speed 	= GPIO_SPEED_HIGH;
+	HAL_GPIO_Init(GPIOA, &gMuxPins_3);
+	GPIO_InitTypeDef gMuxPins_4_5;
+	gMuxPins_4_5.Pin 	= GPIO_S4_PIN | GPIO_S5_PIN | GPIO_CLEN_PIN;
+	gMuxPins_4_5.Mode 	= GPIO_MODE_OUTPUT_PP;
+	gMuxPins_4_5.Pull 	= GPIO_PULLDOWN;
+	gMuxPins_4_5.Speed 	= GPIO_SPEED_HIGH;
+	HAL_GPIO_Init(GPIOB, &gMuxPins_4_5);
+	setMuxState(MUX_C, MUX_STATE_Z);
+	setMuxState(MUX_B, MUX_STATE_Z);
+	setMuxState(MUX_A, MUX_STATE_Z);
+
+	// DIS pin setup
+	// Must set pin initially so that init routine does not invoke a brief LOW state.
+	WritePin(GPIOB, GPIO_DIS_PIN, GPIO_PIN_SET);
+	GPIO_InitTypeDef gDisPin;
+	gDisPin.Pin 	= GPIO_DIS_PIN;
+	gDisPin.Mode 	= GPIO_MODE_OUTPUT_PP;
+	gDisPin.Pull 	= GPIO_NOPULL;
+	gDisPin.Speed 	= GPIO_SPEED_HIGH;
+	HAL_GPIO_Init(GPIOB, &gDisPin);
+	WritePin(GPIOB, GPIO_DIS_PIN, GPIO_PIN_SET);
+
 	MX_GPIO_Init();
 
+	// Setup rotary encoder inputs
 	Encoder_Z_Init();
 
-	InitSerial(921600, UART_STOPBITS_1, UART_WORDLENGTH_8B, UART_PARITY_NONE);
+	// Setup hall sensor inputs from BLDC motor
+	Hall_Input_Init();
 
-	uint8_t rx_buff[64];
-	rx_serial_data(rx_buff, 64);
+	// Setup serial interface
+	InitSerial(115200, UART_STOPBITS_1, UART_WORDLENGTH_8B, UART_PARITY_NONE);
+
+	rx_serial_data(dma_buffer_rx, FULL_RX);
+
+
+	PID_Initialize(&speedControl);
+	PID_SetKp(&speedControl, 0.02f);
+	PID_SetKi(&speedControl, 0.025f);
+	PID_SetKd(&speedControl, 0.0f);
+	speedControl.deltaTime = 0.01f;
+	PID_SetSetpoint(&speedControl, 240.0f);
+
+	HAL_GPIO_EXTI_Callback(HALL_A_PIN);
+
+	pwm_duty = -1.0f;
+	pwm_inc = PWM_INC_F;
 
 	while (1)
 	{
-		PWM_adjust_DutyCycle(&PWMtimer.timer, deltaDegrees);
-//		PWM_adjust_Frequency(&PWMtimer.timer, deltaDegrees*1000.0f);
-	}
+		if(pwm_duty < -99.0f)
+		{
+			pwm_inc = 0.0f;
+		}
+		if(pwm_duty > 1.0f)
+		{
+			pwm_inc = 0.0f;
+		}
+		pwm_duty += pwm_inc;
 
+		set_motor_speed(pwm_duty);
+	}
 }
 
 
@@ -160,6 +249,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	static int timer9Divisor = 0;
 	static float deltaDegreesLast = 0.0f;
 
+
+//	hall_a_state
+//
+//	hall_a_timer -= 40;
+
+
+
+
+
 	timeElapUs += 40;
 	timer9Divisor++;
 	if(timer9Divisor >= 25)
@@ -173,10 +271,39 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		degreesPsec 		= (deltaDegrees - deltaDegreesLast)/0.1f;
 		deltaDegreesLast 	= deltaDegrees;
 
-		uint8_t pd[4] 		= {0x12, 0x34, 0x56, 0x78};
-		tx_serial_data(pd, 4);
+		static int thingy = 0;
+		static int state_to_set = 1;
+		static float rpmnow = 0.0f;
+		if(timeElapUs % 10000 == 0)
+		{
+			static char dataToSend[64];
+			int tosendsize = 0;
+			tosendsize = sprintf(dataToSend, "%.2f, %.2f\n", pwm_duty, (float)rpmnow);
+			tx_serial_data(&dataToSend, tosendsize);
+		}
+
+//			static int dir = 0;
+//			if(dir == 1)
+//				dir = 0;
+//			else
+//				dir = 1;
+//			set_direction(dir);
+
+		if(timeElapMs % 10 == 0)
+		{
+			PID_Update(&speedControl, rpmnow);
+
+			rpmnow = rpmnow*0.95 + ((((float)get_hall_steps() / 24.0f) / 0.01f) * 60.0f)*0.05;
+			set_hall_steps(0);
+
+
+//			set_motor_speed(20.0f);
+//			pwm_duty = 20.1f;
+		}
 	}
 }
+
+
 
 
 /******************************************************************************/
