@@ -1,10 +1,17 @@
-#include <stdio.h>
+#ifndef HALL_H_ /* include guard */
+#define HALL_H_
+
 #include "stm32f4xx.h"
 
 //#define BI_POLAR
 #ifndef BI_POLAR
 #define UNI_POLAR
 #endif
+
+// Hall sensor states
+#define HALL_A			0
+#define HALL_B			1
+#define HALL_C			2
 
 //GPIOC
 #define GPIO_S0_PIN		GPIO_PIN_2
@@ -35,35 +42,24 @@
 #define	MUX_STATE_M_PWM_T	0x07
 #define	MUX_STATE_TBD4		0x08
 
+// Read a GPIO state (returns GPIO_PIN_X)
 #define READ_H(xxx)	(HALL_PORT->IDR & xxx)
 
-#define STATE_1		READ_H(HALL_A_PIN) && !READ_H(HALL_B_PIN) && !READ_H(HALL_C_PIN)
-#define STATE_2		READ_H(HALL_A_PIN) && READ_H(HALL_B_PIN) && !READ_H(HALL_C_PIN)
-#define STATE_3		!READ_H(HALL_A_PIN) && READ_H(HALL_B_PIN) && !READ_H(HALL_C_PIN)
-#define STATE_4		!READ_H(HALL_A_PIN) && READ_H(HALL_B_PIN) && READ_H(HALL_C_PIN)
-#define STATE_5		!READ_H(HALL_A_PIN) && !READ_H(HALL_B_PIN) && READ_H(HALL_C_PIN)
-#define STATE_6		READ_H(HALL_A_PIN) && !READ_H(HALL_B_PIN) && READ_H(HALL_C_PIN)
+// Test for 1/6 states
+#define STATE_1		READ_H(HALL_A_PIN) 	&& !READ_H(HALL_B_PIN) 	&& !READ_H(HALL_C_PIN)
+#define STATE_2		READ_H(HALL_A_PIN) 	&& READ_H(HALL_B_PIN) 	&& !READ_H(HALL_C_PIN)
+#define STATE_3		!READ_H(HALL_A_PIN) && READ_H(HALL_B_PIN) 	&& !READ_H(HALL_C_PIN)
+#define STATE_4		!READ_H(HALL_A_PIN) && READ_H(HALL_B_PIN) 	&& READ_H(HALL_C_PIN)
+#define STATE_5		!READ_H(HALL_A_PIN) && !READ_H(HALL_B_PIN) 	&& READ_H(HALL_C_PIN)
+#define STATE_6		READ_H(HALL_A_PIN) 	&& !READ_H(HALL_B_PIN) 	&& READ_H(HALL_C_PIN)
 
-#define DRIVE_FORWARD	0
-#define DRIVE_BAKWARD	1
-
-volatile uint32_t	hall_steps;
-
-extern volatile int hall_a_timer;
-extern volatile int hall_a_state;
-extern volatile int hall_a_stateLast;
-extern volatile int hall_b_timer;
-extern volatile int hall_b_state;
-extern volatile int hall_b_stateLast;
-extern volatile int hall_c_timer;
-extern volatile int hall_c_state;
-extern volatile int hall_c_stateLast;
-
+extern float hall_currentRpmValue;
 
 void Encoder_Z_Init(void);
+void Hall_Compute_RPM(float timeStep);
 void Hall_Input_Init(void);
-void setMuxState(uint8_t mux, uint8_t state);
-
 uint32_t get_hall_steps(void);
 void set_hall_steps(uint32_t val);
-void set_direction(int dir);
+
+
+#endif /* HALL_H_ */

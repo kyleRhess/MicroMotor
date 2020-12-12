@@ -1,5 +1,12 @@
+#ifndef ENCODER_H_ /* include guard */
+#define ENCODER_H_
+
 #include <stdio.h>
 #include "stm32f4xx.h"
 
-void quadrature_timer_init(TIM_HandleTypeDef *timer);
-void Encoder_Z_Init(void);
+extern TIM_HandleTypeDef q_time;
+
+void encoder_Init(TIM_HandleTypeDef *timer);
+void encoder_ZInit(void);
+
+#endif /* ENCODER_H_ */

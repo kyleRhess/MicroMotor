@@ -39,41 +39,22 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
-#include "system.h"
-#include "PWM.h"
-#include "SPI.h"
-#include "Serial.h"
+
+#include "clock.h"
+#include "cmsis_device.h"
+#include "diag/Trace.h"
 #include "encoder.h"
 #include "hall.h"
-#include "PID.h"
-#include "diag/Trace.h"
-#include "cmsis_device.h"
-
-TIM_HandleTypeDef q_time;
-
-
-// Background timer for keeping time (25kHz)
-static TIM_HandleTypeDef SamplingTimer 	= { .Instance = TIM9 };
-static uint32_t timeElapUs 				= 0;
-static uint32_t timeElapMs 				= 0;
-static float 	timeElapMin 			= 0.0f;
-
-// Degrees from encoder counts
-static float deltaDegrees	 			= 0.0f;
-static float degreesPsec	 			= 0.0f;
-
-float pwm_duty = 0.0f;
-float pwm_inc = PWM_INC_F;
-
-// PWM timer stuff
-PWM_Out PWMtimer;
-
-PID_Controller speedControl;
+#include "main.h"
+#include "pid.h"
+#include "pwm.h"
+#include "serial.h"
+#include "signal.h"
+#include "spi.h"
+#include "system.h"
 
 // Function declarations
 static void setHighSystemClk(void);
-static int InitSamplingTimer(void);
 static void MX_GPIO_Init(void);
 
 // Sample pragmas to cope with warnings. Please note the related line at
@@ -83,26 +64,8 @@ static void MX_GPIO_Init(void);
 #pragma GCC diagnostic ignored "-Wmissing-declarations"
 #pragma GCC diagnostic ignored "-Wreturn-type"
 
-
-static void set_motor_speed(float speed)
-{
-
-#ifdef BI_POLAR
-	if(speed < -100.0f)
-		speed = -100.0f;
-	if(speed >  100.0f)
-		speed =  100.0f;
-
-	PWM_adjust_DutyCycle(&PWMtimer.timer, ((speed*0.5f) + 50.0f));
-#else
-	if(speed < 0.0f)
-		set_direction(DRIVE_BAKWARD);
-	else
-		set_direction(DRIVE_FORWARD);
-
-	PWM_adjust_DutyCycle(&PWMtimer.timer, fabsf(speed));
-#endif
-}
+static CLOCK_TIMER checktimer;
+PID_Controller speedControl;
 
 int main(int argc, char* argv[])
 {
@@ -117,7 +80,7 @@ int main(int argc, char* argv[])
 	InitSamplingTimer();
 
 	// Start timer to count encoder pulses
-	quadrature_timer_init(&q_time);
+	encoder_Init(&q_time);
 
 	// Set background timer interrupt priority
 	HAL_NVIC_SetPriority(TIM1_BRK_TIM9_IRQn, 1, 0);
@@ -128,81 +91,45 @@ int main(int argc, char* argv[])
 	RCC->AHB1ENR 	|= RCC_AHB1ENR_GPIOBEN;
 
 	// MUX pins setup
-	setMuxState(MUX_C, MUX_STATE_Z);
-	setMuxState(MUX_B, MUX_STATE_Z);
-	setMuxState(MUX_A, MUX_STATE_Z);
-	GPIO_InitTypeDef gMuxPins_0_2;
-	gMuxPins_0_2.Pin 	= GPIO_S0_PIN | GPIO_S1_PIN | GPIO_S2_PIN | GPIO_ALEN_PIN | GPIO_BLEN_PIN;
-	gMuxPins_0_2.Mode 	= GPIO_MODE_OUTPUT_PP;
-	gMuxPins_0_2.Pull 	= GPIO_PULLDOWN;
-	gMuxPins_0_2.Speed 	= GPIO_SPEED_HIGH;
-	HAL_GPIO_Init(GPIOC, &gMuxPins_0_2);
-	GPIO_InitTypeDef gMuxPins_3;
-	gMuxPins_3.Pin 	= GPIO_S3_PIN;
-	gMuxPins_3.Mode 	= GPIO_MODE_OUTPUT_PP;
-	gMuxPins_3.Pull 	= GPIO_PULLDOWN;
-	gMuxPins_3.Speed 	= GPIO_SPEED_HIGH;
-	HAL_GPIO_Init(GPIOA, &gMuxPins_3);
-	GPIO_InitTypeDef gMuxPins_4_5;
-	gMuxPins_4_5.Pin 	= GPIO_S4_PIN | GPIO_S5_PIN | GPIO_CLEN_PIN;
-	gMuxPins_4_5.Mode 	= GPIO_MODE_OUTPUT_PP;
-	gMuxPins_4_5.Pull 	= GPIO_PULLDOWN;
-	gMuxPins_4_5.Speed 	= GPIO_SPEED_HIGH;
-	HAL_GPIO_Init(GPIOB, &gMuxPins_4_5);
-	setMuxState(MUX_C, MUX_STATE_Z);
-	setMuxState(MUX_B, MUX_STATE_Z);
-	setMuxState(MUX_A, MUX_STATE_Z);
-
-	// DIS pin setup
-	// Must set pin initially so that init routine does not invoke a brief LOW state.
-	WritePin(GPIOB, GPIO_DIS_PIN, GPIO_PIN_SET);
-	GPIO_InitTypeDef gDisPin;
-	gDisPin.Pin 	= GPIO_DIS_PIN;
-	gDisPin.Mode 	= GPIO_MODE_OUTPUT_PP;
-	gDisPin.Pull 	= GPIO_NOPULL;
-	gDisPin.Speed 	= GPIO_SPEED_HIGH;
-	HAL_GPIO_Init(GPIOB, &gDisPin);
-	WritePin(GPIOB, GPIO_DIS_PIN, GPIO_PIN_SET);
-
+	signal_Init();
 	MX_GPIO_Init();
 
 	// Setup rotary encoder inputs
-	Encoder_Z_Init();
+	encoder_ZInit();
 
 	// Setup hall sensor inputs from BLDC motor
 	Hall_Input_Init();
 
 	// Setup serial interface
-	InitSerial(115200, UART_STOPBITS_1, UART_WORDLENGTH_8B, UART_PARITY_NONE);
+	InitSerial(921600, UART_STOPBITS_1, UART_WORDLENGTH_8B, UART_PARITY_NONE);
 
-	rx_serial_data(dma_buffer_rx, FULL_RX);
-
+	rx_serial_data(uartRx, RX_BUFF_SZ);
 
 	PID_Initialize(&speedControl);
-	PID_SetKp(&speedControl, 0.02f);
-	PID_SetKi(&speedControl, 0.025f);
+	PID_SetKp(&speedControl, 0.0405f);
+	PID_SetKi(&speedControl, 0.001f);
 	PID_SetKd(&speedControl, 0.0f);
-	speedControl.deltaTime = 0.01f;
-	PID_SetSetpoint(&speedControl, 240.0f);
+	speedControl.deltaTime = 0.005f;
+	PID_SetSetpoint(&speedControl, 1000.0f);
 
-	HAL_GPIO_EXTI_Callback(HALL_A_PIN);
-
-	pwm_duty = -1.0f;
-	pwm_inc = PWM_INC_F;
+	clock_StartTimer(&checktimer, 10);
+	clock_StartTimer(&checktimer, 1);
 
 	while (1)
 	{
-		if(pwm_duty < -99.0f)
+		static uint32_t msLast = 0;
+		if((clock_GetMs() - msLast) >= 100)
 		{
-			pwm_inc = 0.0f;
-		}
-		if(pwm_duty > 1.0f)
-		{
-			pwm_inc = 0.0f;
-		}
-		pwm_duty += pwm_inc;
+			Hall_Compute_RPM(0.1f);
 
-		set_motor_speed(pwm_duty);
+			msLast = clock_GetMs();
+
+			signal_currentPwmValue = (float)q_time.Instance->CNT;
+
+			// In case motor is frozen when starting
+			if(signal_currentPwmValue > 0.0f && hall_currentRpmValue <= 1.0f)
+				HAL_GPIO_EXTI_Callback(HALL_A_PIN);
+		}
 	}
 }
 
@@ -219,90 +146,6 @@ static void MX_GPIO_Init(void)
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 }
-
-static int InitSamplingTimer()
-{
-	__HAL_RCC_TIM9_CLK_ENABLE();
-
-	// 25 kHz = 100E6/((49+1)*(79+1)*(1))
-    SamplingTimer.Init.Prescaler 		= 49;
-    SamplingTimer.Init.CounterMode 		= TIM_COUNTERMODE_UP;
-    SamplingTimer.Init.Period 			= 79;
-    SamplingTimer.Init.ClockDivision 	= TIM_CLOCKDIVISION_DIV1;
-
-    if(HAL_TIM_Base_Init(&SamplingTimer) != HAL_OK)
-    	return HAL_ERROR;
-
-    if(HAL_TIM_Base_Start_IT(&SamplingTimer) != HAL_OK)
-    	return HAL_ERROR;
-
-    return HAL_OK;
-}
-
-void TIM1_BRK_TIM9_IRQHandler(void)
-{
-	HAL_TIM_IRQHandler(&SamplingTimer);
-}
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	static int timer9Divisor = 0;
-	static float deltaDegreesLast = 0.0f;
-
-
-//	hall_a_state
-//
-//	hall_a_timer -= 40;
-
-
-
-
-
-	timeElapUs += 40;
-	timer9Divisor++;
-	if(timer9Divisor >= 25)
-	{
-		// 1000 ms tick
-		timeElapMs 			+= 1;
-		timeElapMin			+= (0.001f/60.0f);
-		timer9Divisor 		= 0;
-
-		deltaDegrees 		= ((float)(int32_t)q_time.Instance->CNT * (360.0f / (6000.0f * 4.0f)));
-		degreesPsec 		= (deltaDegrees - deltaDegreesLast)/0.1f;
-		deltaDegreesLast 	= deltaDegrees;
-
-		static int thingy = 0;
-		static int state_to_set = 1;
-		static float rpmnow = 0.0f;
-		if(timeElapUs % 10000 == 0)
-		{
-			static char dataToSend[64];
-			int tosendsize = 0;
-			tosendsize = sprintf(dataToSend, "%.2f, %.2f\n", pwm_duty, (float)rpmnow);
-			tx_serial_data(&dataToSend, tosendsize);
-		}
-
-//			static int dir = 0;
-//			if(dir == 1)
-//				dir = 0;
-//			else
-//				dir = 1;
-//			set_direction(dir);
-
-		if(timeElapMs % 10 == 0)
-		{
-			PID_Update(&speedControl, rpmnow);
-
-			rpmnow = rpmnow*0.95 + ((((float)get_hall_steps() / 24.0f) / 0.01f) * 60.0f)*0.05;
-			set_hall_steps(0);
-
-
-//			set_motor_speed(20.0f);
-//			pwm_duty = 20.1f;
-		}
-	}
-}
-
 
 
 

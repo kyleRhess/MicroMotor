@@ -1,4 +1,4 @@
-#include "SPI.h"
+#include "spi.h"
 
 
 void SPI_Send(SPI_Bus * _SPI, GPIO_TypeDef *GPIOx, uint32_t Pin, uint8_t *pTxData, uint16_t bytesToTx)

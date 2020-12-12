@@ -3,6 +3,7 @@
 #include "system.h"
 
 TIM_HandleTypeDef timer_PWM;
+PWM_Out PWMtimer;
 
 int InitPWMOutput(PWM_Out * PWMType)
 {

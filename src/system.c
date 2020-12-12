@@ -1,6 +1,5 @@
 #include "system.h"
 
-
 void WritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState)
 {
 	if(PinState != GPIO_PIN_RESET)
@@ -13,7 +12,6 @@ uint8_t ReadPin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 {
 	return (GPIOx->IDR & GPIO_Pin) != (uint32_t)0;
 }
-
 
 /*
  * Maps input values 'x' from 'in_min' to 'out_min', and from 'in_max' to 'out_max.'

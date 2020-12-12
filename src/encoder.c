@@ -1,13 +1,14 @@
 #include "encoder.h"
 #include "system.h"
 
+TIM_HandleTypeDef q_time;
 
 /**
   * @brief TIM5 Initialization Function
   * @param None
   * @retval None
   */
-void quadrature_timer_init(TIM_HandleTypeDef *timer)
+void encoder_Init(TIM_HandleTypeDef *timer)
 {
 	TIM_Encoder_InitTypeDef sConfig = {0};
 	TIM_MasterConfigTypeDef sMasterConfig = {0};
@@ -43,18 +44,7 @@ void quadrature_timer_init(TIM_HandleTypeDef *timer)
 	HAL_TIM_Encoder_Start(timer, TIM_CHANNEL_1 | TIM_CHANNEL_2);
 }
 
-/**
-* @brief This function handles EXTI line0.
-*/
-void EXTI15_10_IRQHandler(void)
-{
-	HAL_GPIO_EXTI_IRQHandler(ENCODER_Z_PIN);
-	HAL_GPIO_EXTI_IRQHandler(HALL_A_PIN);
-	HAL_GPIO_EXTI_IRQHandler(HALL_B_PIN);
-	HAL_GPIO_EXTI_IRQHandler(HALL_C_PIN);
-}
-
-void Encoder_Z_Init(void)
+void encoder_ZInit(void)
 {
 	// OUT_Z pin setup
 	GPIO_InitTypeDef gZPin;
@@ -68,6 +58,16 @@ void Encoder_Z_Init(void)
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
+/**
+* @brief This function handles EXTI line.
+*/
+void EXTI15_10_IRQHandler(void)
+{
+	HAL_GPIO_EXTI_IRQHandler(ENCODER_Z_PIN);
+	HAL_GPIO_EXTI_IRQHandler(HALL_A_PIN);
+	HAL_GPIO_EXTI_IRQHandler(HALL_B_PIN);
+	HAL_GPIO_EXTI_IRQHandler(HALL_C_PIN);
+}
 
 /**
 * @brief TIM_Encoder MSP Initialization

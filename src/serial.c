@@ -1,9 +1,11 @@
 #include <string.h>
-#include <stdio.h>
-#include "stm32f4xx.h"
-#include "Serial.h"
-#include "system.h"
+//#include <stdio.h>
+
 #include "hall.h"
+#include "serial.h"
+#include "signal.h"
+#include "stm32f4xx.h"
+#include "system.h"
 
 volatile uint8_t toggle = 0;
 UART_HandleTypeDef s_UARTHandle = { .Instance = USART1 };
@@ -14,14 +16,49 @@ DMA_HandleTypeDef hdma_usart1_tx;
 __IO ITStatus UartReady				= SET;
 __IO ITStatus UartRxCmdReady 		= RESET;
 
-uint8_t dma_buffer_tx[FULL_RX*2];
-uint8_t dma_buffer_rx[FULL_RX*2];
-uint32_t dma_tx_idx = 0;
-uint32_t dma_rx_idx = 0;
-uint32_t dma_rx_idxLast = 0;
-uint32_t dma_tx_idxLast = 0;
+uint8_t uartRx[RX_BUFF_SZ];
+uint8_t uartTx[TX_BUFF_SZ];
 
-float pwm_freq_rx = 1.0f;
+struct DataFields
+{
+	float		pwmValue; 	// 1
+	uint32_t	driveMode;	// 2
+	float		rpmValue;	// 3
+	uint32_t	TBD2;	// 4
+	uint32_t	TBD3;	// 5
+	uint32_t	TBD4;	// 6
+	uint32_t	TBD5;	// 7
+} __attribute__((__packed__));
+
+struct DataFields cmdData;
+struct DataFields rxCmdData;
+
+static void tx_ack(uint32_t *command)
+{
+	uint32_t txCrc = 0;
+	uartTx[0] = START_CHAR;
+
+	memcpy(&uartTx[1], command, 4);
+
+	memcpy(&uartTx[1+4], &cmdData, sizeof(cmdData));
+
+	crc32_(&uartTx[0], TX_BUFF_SZ-4, &txCrc);
+	memcpy(&uartTx[TX_BUFF_SZ-4], &txCrc, 4);
+	tx_serial_data(&uartTx[0], TX_BUFF_SZ);
+}
+
+static void tx_nak(void)
+{
+	uint32_t txCrc = 0;
+	uartTx[0] = START_CHAR;
+
+	uint32_t nakVal = 0xFFFFAAAA;
+	memcpy(&uartTx[1], &nakVal, 4);
+
+	crc32_(&uartTx[0], TX_BUFF_SZ-4, &txCrc);
+	memcpy(&uartTx[TX_BUFF_SZ-4], &txCrc, 4);
+	tx_serial_data(&uartTx[0], TX_BUFF_SZ);
+}
 
 int InitSerial(uint32_t baudrate, uint32_t stopbits, uint32_t datasize, uint32_t parity)
 {
@@ -100,80 +137,38 @@ void crc32(const void *data, size_t n_bytes, uint32_t* crc)
 	*crc = sum;
 }
 
-//int main(int ac, char** av) {
-//  FILE *fp;
-//  char buf[1L << 15];
-//  for(int i = ac > 1; i < ac; ++i)
-//    if((fp = i? fopen(av[i], "rb"): stdin)) {
-//      uint32_t crc = 0;
-//      while(!feof(fp) && !ferror(fp))
-//        crc32(buf, fread(buf, 1, sizeof(buf), fp), &crc);
-//      if(!ferror(fp))
-//        printf("%08x%s%s\n", crc, ac > 2? "\t": "", ac > 2? av[i]: "");
-//      if(i)
-//        fclose(fp);
-//    }
-//  return 0;
-//}
-
-
-
-/**
-  * @brief This function handles USART1 global interrupt.
-  */
-void USART1_IRQHandler(void)
+static uint32_t proc_command(uint32_t command)
 {
-  HAL_UART_IRQHandler(&s_UARTHandle);
-}
+	uint32_t rc = 0;
 
-/**
-  * @brief This function handles DMA2 stream2 global interrupt.
-  */
-void DMA2_Stream2_IRQHandler(void)
-{
-  HAL_DMA_IRQHandler(&hdma_usart1_rx);
-}
-
-/**
-  * @brief This function handles DMA2 stream7 global interrupt.
-  */
-void DMA2_Stream7_IRQHandler(void)
-{
-  HAL_DMA_IRQHandler(&hdma_usart1_tx);
-}
-
-static void proc_command(uint32_t command, uint32_t param)
-{
-	pwm_freq_rx = (float)command;
-	if (command == param)
+	switch (command)
 	{
-		if(command == 0xAF)
-		{
-			if(pwm_duty < 0.0f)
-			{
-				pwm_inc = PWM_INC_F;
-				pwm_duty += 0.5f;
-			}
-			else
-			{
-				pwm_inc = -PWM_INC_F;
-				pwm_duty -= 0.5f;
-			}
-		}
-		else
-		{
-			WritePin(GPIOB, GPIO_DIS_PIN, !ReadPin(GPIOB, GPIO_DIS_PIN));
-		}
+		case CMD_MOTOR_QUERY:
+			rc = command;
+			cmdData.pwmValue = signal_currentPwmValue;
+			cmdData.driveMode = signal_GetMotorMode();
+			cmdData.rpmValue = hall_currentRpmValue;
+			break;
+		case CMD_MOTOR_ENABLE:
+			rc = command;
+			signal_SetMotorState(MOTOR_MODE_ENABLE);
+			break;
+		case CMD_MOTOR_DISABLE:
+			rc = command;
+			signal_SetMotorState(MOTOR_MODE_DISABLE);
+			break;
+		case CMD_MOTOR_PWM:
+			rc = command;
+
+			memcpy(&rxCmdData, &uartRx[1+4], sizeof(rxCmdData));
+
+			signal_SetMotorPWM(rxCmdData.pwmValue);
+			break;
+		default:
+			break;
 	}
 
-//	switch (command)
-//	{
-//		case 0xabcd:
-//			WritePin(GPIOB, GPIO_DIS_PIN, !ReadPin(GPIOB, GPIO_DIS_PIN));
-//			break;
-//		default:
-//			break;
-//	}
+	return rc;
 }
 
 /* USER CODE BEGIN 1 */
@@ -181,41 +176,37 @@ static void proc_command(uint32_t command, uint32_t param)
  * UART Interrupts
  */
 
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
-{
-	if(UartHandle->hdmatx->ErrorCode == HAL_DMA_ERROR_FE)
-	{
-		// Since FIFO mode disabled, just ignore this error
-		__NOP();
-	}
-	else
-	{
-		if(__HAL_UART_GET_FLAG(UartHandle, UART_FLAG_ORE) != RESET)
-		{
-			if(__HAL_UART_GET_FLAG(UartHandle, UART_FLAG_RXNE) == RESET)
-				UartHandle->Instance->DR;
-		}
-	}
-}
-
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	static uint32_t thiscrc = 0;
-	static uint32_t rxCrc = 0;
+	uint32_t thiscrc = 0;
+	uint32_t rxCrc = 0;
 
-	crc32(&dma_buffer_rx[0], FULL_RX, &thiscrc);
+	// start, data...data, checksum
+	if(uartRx[0] == START_CHAR)
+	{
+		crc32_(&uartRx[0], RX_BUFF_SZ-4, &thiscrc);
+		rxCrc = (uartRx[RX_BUFF_SZ - 4] << 24) |
+				(uartRx[RX_BUFF_SZ - 3] << 16) |
+				(uartRx[RX_BUFF_SZ - 2] << 8) |
+				(uartRx[RX_BUFF_SZ - 1] << 0);
 
-	rxCrc = (dma_buffer_rx[FULL_RX - 4] << 24) |
-			(dma_buffer_rx[FULL_RX - 3] << 16) |
-			(dma_buffer_rx[FULL_RX - 2] << 8) |
-			(dma_buffer_rx[FULL_RX - 1] << 0);
+		if(thiscrc == rxCrc && rxCrc != 0)
+		{
+			uint32_t command = 0;
+			memcpy(&command, &uartRx[1], 4);
 
-	proc_command((uint32_t)dma_buffer_rx[0], (uint32_t)dma_buffer_rx[63]);
+			if(proc_command(command) == command)
+				tx_ack(&command);
+			else
+				tx_nak();
+		}
+		else
+		{
+			tx_nak();
+		}
+	}
 
-//	pwm_freq_rx = dma_buffer_rx[0]
-
-	HAL_UART_Receive_DMA(huart, &dma_buffer_rx[0], FULL_RX);
-	dma_rx_idx++;
+	HAL_UART_Receive_DMA(huart, &uartRx[0], RX_BUFF_SZ);
 }
 
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
@@ -235,85 +226,40 @@ void HAL_UART_TxHalfCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-	dma_tx_idx++;
 	__NOP();
 }
 
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
+{
+	if(UartHandle->hdmatx->ErrorCode == HAL_DMA_ERROR_FE)
+	{
+		// Since FIFO mode disabled, just ignore this error
+		__NOP();
+	}
+	else
+	{
+		if(__HAL_UART_GET_FLAG(UartHandle, UART_FLAG_ORE) != RESET)
+		{
+			if(__HAL_UART_GET_FLAG(UartHandle, UART_FLAG_RXNE) == RESET)
+				UartHandle->Instance->DR;
+		}
+	}
+}
 
+void USART1_IRQHandler(void)
+{
+  HAL_UART_IRQHandler(&s_UARTHandle);
+}
 
-/*
- *
- */
-//void USART1_IRQHandler(void)
-//{
-//	if(s_UARTHandle.gState != HAL_UART_STATE_BUSY_TX)
-//	{
-//		if(rxBufferSwitch == 0)
-//		{
-//			// Copy ISR buffer into RX buffer
-//			uartRxA[rxIndexA++] = (uint8_t)(s_UARTHandle.Instance->DR & (uint8_t)0x00FF);
-//
-//			if(rxIndexA >= TX_BUFF_SZ)
-//			{
-//				memcpy(&uartTx, &uartRxA, TX_BUFF_SZ);
-//				HAL_UART_Transmit_IT(&s_UARTHandle, uartTx, TX_BUFF_SZ);
-//				rxIndexA = 0;
-//				rxBufferSwitch = 1;
-//			}
-//		}
-//		else
-//		{
-//			// Copy ISR buffer into RX buffer
-//			uartRxB[rxIndexB++] = (uint8_t)(s_UARTHandle.Instance->DR & (uint8_t)0x00FF);
-//
-//			if(rxIndexB >= TX_BUFF_SZ)
-//			{
-//				memcpy(&uartTx, &uartRxB, TX_BUFF_SZ);
-//				HAL_UART_Transmit_IT(&s_UARTHandle, uartTx, TX_BUFF_SZ);
-//				rxIndexB = 0;
-//				rxBufferSwitch = 0;
-//			}
-//		}
-//
-//		add_characters((uint8_t)(s_UARTHandle.Instance->DR & (uint8_t)0x00FF), 1);
-//		update_display();
-//
-//		// Clear out the rx uart register
-//		__HAL_UART_FLUSH_DRREGISTER(&s_UARTHandle);
-//		__HAL_UART_CLEAR_FEFLAG(&s_UARTHandle);
-//	}
-//
-//	UartRxCmdReady = RESET;
-//
-//	HAL_UART_IRQHandler(&s_UARTHandle);
-//	return;
-//}
+void DMA2_Stream2_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_usart1_rx);
+}
 
-//void HAL_UART_MspInit(UART_HandleTypeDef* huart)
-//{
-//	if(huart->Instance == USART1)
-//	{
-//		GPIO_InitTypeDef GPIO_InitStructureUart = {0};
-//
-//		// Setup all our peripherals
-//		__HAL_RCC_USART1_CLK_ENABLE();
-//		__HAL_RCC_GPIOB_CLK_ENABLE();
-//
-//		GPIO_InitStructureUart.Pin = GPIO_PIN_6 | GPIO_PIN_7;
-//		GPIO_InitStructureUart.Mode = GPIO_MODE_AF_PP;
-//		GPIO_InitStructureUart.Alternate = GPIO_AF7_USART1;
-//		GPIO_InitStructureUart.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-//		GPIO_InitStructureUart.Pull = GPIO_PULLUP;
-//		HAL_GPIO_Init(GPIOB, &GPIO_InitStructureUart);
-//
-//		// Enable the UART interrupt
-//		__HAL_UART_ENABLE_IT(huart, UART_IT_RXNE);
-//
-//		HAL_NVIC_SetPriority(USART1_IRQn, 4, 0);
-//		HAL_NVIC_EnableIRQ(USART1_IRQn);
-//	}
-//}
-
+void DMA2_Stream7_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_usart1_tx);
+}
 
 /**
 * @brief UART MSP Initialization
@@ -355,7 +301,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 	    hdma_usart1_rx.Init.MemDataAlignment 	= DMA_MDATAALIGN_BYTE;
 	    hdma_usart1_rx.Init.Mode 				= DMA_CIRCULAR;
 	    hdma_usart1_rx.Init.Priority 			= DMA_PRIORITY_HIGH;
-	    hdma_usart1_rx.Init.FIFOMode 			= DMA_FIFOMODE_ENABLE;
+	    hdma_usart1_rx.Init.FIFOMode 			= DMA_FIFOMODE_DISABLE;
 	    hdma_usart1_rx.Init.FIFOThreshold 		= DMA_FIFO_THRESHOLD_FULL;
 	    hdma_usart1_rx.Init.MemBurst 			= DMA_MBURST_SINGLE;
 	    hdma_usart1_rx.Init.PeriphBurst 		= DMA_PBURST_SINGLE;
@@ -384,10 +330,10 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
 	    __HAL_LINKDMA(huart, hdmatx, hdma_usart1_tx);
 
-	  /* USER CODE BEGIN USART1_MspInit 1 */
-	    HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
-	    HAL_NVIC_EnableIRQ(USART1_IRQn);
-	  /* USER CODE END USART1_MspInit 1 */
+		/* USER CODE BEGIN USART1_MspInit 1 */
+		HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
+		HAL_NVIC_EnableIRQ(USART1_IRQn);
+		/* USER CODE END USART1_MspInit 1 */
 	  }
 }
 

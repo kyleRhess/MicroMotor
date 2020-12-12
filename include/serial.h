@@ -2,15 +2,17 @@
 #define SERIAL_H_
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "stm32f4xx.h"
-
-#define FULL_RX 64
-#define HALF_RX FULL_RX / 2
 
 #define MSG_RATE_HZ(xxx) 	(SAMPLE_RATE / xxx)
 
-#define RX_BUFF_SZ 			64
-#define TX_BUFF_SZ 			32
+#define RX_BUFF_SZ 			37
+#define TX_BUFF_SZ 			37
+
+#define START_CHAR 			0xAA
+#define SERIAL_CMD_ACK 		"ACK"
+#define SERIAL_CMD_NAK 		"NAK"
 
 #define CMD_SET_OUT_DAT 	0x01
 #define CMD_SET_OUT_RATE 	0x02
@@ -23,24 +25,20 @@
 #define SERIAL_CMD_START 	0x7F
 #define SERIAL_CMD_END 		0xF7
 
-
 #define PWM_INC_F	0.0001f
 
-uint8_t *uartBuffer;
-uint8_t uartRxA[RX_BUFF_SZ];
-uint8_t uartRxB[RX_BUFF_SZ];
-uint8_t uartTx[TX_BUFF_SZ];
+typedef enum
+{
+	STATUS_ENABLE = 0,
+	STATUS_RPM,
+	STATUS_PWM,
+	STATUS_ODR,
+	STATUS_PID,
+	STATUS_NUM
+} STATUS;
 
-extern uint8_t dma_buffer_tx[FULL_RX*2];
-extern uint8_t dma_buffer_rx[FULL_RX*2];
-extern uint32_t dma_tx_idx;
-extern uint32_t dma_rx_idx;
-extern uint32_t dma_rx_idxLast;
-extern uint32_t dma_tx_idxLast;
-
-extern float pwm_freq_rx;
-extern float pwm_duty;
-extern float pwm_inc;
+extern uint8_t uartRx[RX_BUFF_SZ];
+extern uint8_t uartTx[TX_BUFF_SZ];
 
 uint8_t 	rxIndexA;
 uint8_t 	rxIndexB;
