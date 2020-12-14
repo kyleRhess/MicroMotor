@@ -1,19 +1,18 @@
 
-#include "PWM.h"
-#include "system.h"
+#include "pwm.h"
 
-TIM_HandleTypeDef timer_PWM;
-PWM_Out PWMtimer;
+static TIM_HandleTypeDef timer_PWM;
+static PWM_Out PWMtimer;
 
-int InitPWMOutput(PWM_Out * PWMType)
+int PWM_Init_Output()
 {
-	PWMType->frequency 		= PWM_FREQ;
-	PWMType->TIM 			= TIM1;
-	PWMType->timer 			= Initialize_PWM(PWMType);
+	PWMtimer.frequency 				= PWM_FREQ;
+	PWMtimer.TIM 					= TIM1;
+	PWMtimer.timer 					= PWM_Init();
 	return HAL_OK;
 }
 
-TIM_HandleTypeDef Initialize_PWM(PWM_Out * PWMType)
+TIM_HandleTypeDef PWM_Init(void)
 {
 	TIM_MasterConfigTypeDef master;
 	TIM_OC_InitTypeDef configOC;
@@ -21,15 +20,13 @@ TIM_HandleTypeDef Initialize_PWM(PWM_Out * PWMType)
 	memset(&configOC, 0, sizeof(configOC));
 	memset(&timer_PWM, 0, sizeof(timer_PWM));
 
-	TIM_TypeDef * TIM 				= PWMType->TIM;
-
+	TIM_TypeDef * TIM 				= PWMtimer.TIM;
 	timer_PWM.Instance 				= TIM;
 	timer_PWM.Init.Prescaler 		= PWM_PRESCALE;
 	timer_PWM.Init.CounterMode 		= TIM_COUNTERMODE_UP;
 	timer_PWM.Init.Period 			= PWM_PERIOD;
 	timer_PWM.Init.ClockDivision 	= TIM_CLOCKDIVISION_DIV1;
 
-//	HAL_TIM_PWM_Init(&timer_PWM);
 	timer_PWM.Lock = HAL_UNLOCKED;
 	HAL_TIM_PWM_MspInit(&timer_PWM);
 	timer_PWM.State= HAL_TIM_STATE_BUSY;
@@ -55,7 +52,7 @@ TIM_HandleTypeDef Initialize_PWM(PWM_Out * PWMType)
 	return timer_PWM;
 }
 
-void PWM_adjust_DutyCycle(TIM_HandleTypeDef * pwmHandle, float dutyCycle)
+void PWM_adjust_DutyCycle(float dutyCycle)
 {
 	if(dutyCycle > DUTY_LIM_H)
 		dutyCycle = DUTY_LIM_H;
@@ -63,28 +60,28 @@ void PWM_adjust_DutyCycle(TIM_HandleTypeDef * pwmHandle, float dutyCycle)
 		dutyCycle = DUTY_LIM_L;
 
 	uint32_t counts_Ccr = CNTS_FROM_US((1000000/PWM_FREQ)*(dutyCycle/100));
-	pwmHandle->Instance->CCR1 = counts_Ccr;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
-	pwmHandle->Instance->CCR2 = counts_Ccr;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
-	pwmHandle->Instance->CCR3 = counts_Ccr;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
-	pwmHandle->Instance->CCR4 = counts_Ccr;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
+	timer_PWM.Instance->CCR1 = counts_Ccr;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
+	timer_PWM.Instance->CCR2 = counts_Ccr;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
+	timer_PWM.Instance->CCR3 = counts_Ccr;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
+	timer_PWM.Instance->CCR4 = counts_Ccr;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
 }
 
 
 
-void PWM_adjust_Frequency(TIM_HandleTypeDef * pwmHandle, uint32_t newFreq)
+void PWM_adjust_Frequency(uint32_t newFreq)
 {
 	uint32_t period_cycles = CLOCK_CYCLES_PER_SECOND / newFreq;
 	uint16_t prescaler = (uint16_t)(period_cycles / MAX_RELOAD + 1);
 	uint16_t overflow = (uint16_t)((period_cycles + (prescaler / 2)) / prescaler);
 	uint16_t duty = (uint16_t)(overflow / 2);
 
-	pwmHandle->Instance->ARR = (uint32_t)overflow;
-	pwmHandle->Instance->PSC = (uint32_t)prescaler;
+	timer_PWM.Instance->ARR = (uint32_t)overflow;
+	timer_PWM.Instance->PSC = (uint32_t)prescaler;
 
-	pwmHandle->Instance->CCR1 = (uint32_t)duty;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
-	pwmHandle->Instance->CCR2 = (uint32_t)duty;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
-	pwmHandle->Instance->CCR3 = (uint32_t)duty;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
-	pwmHandle->Instance->CCR4 = (uint32_t)duty;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
+	timer_PWM.Instance->CCR1 = (uint32_t)duty;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
+	timer_PWM.Instance->CCR2 = (uint32_t)duty;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
+	timer_PWM.Instance->CCR3 = (uint32_t)duty;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
+	timer_PWM.Instance->CCR4 = (uint32_t)duty;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
 }
 
 void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)

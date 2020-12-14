@@ -3,11 +3,8 @@
 
 #include <string.h>
 #include <math.h>
-#include "hall.h"
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_conf_template.h"
-#include "stm32f4xx_hal_tim.h"
-#include "stm32f4xx_hal_tim_ex.h"
+
+#include "system.h"
 
 #ifdef BI_POLAR
 #define PWM_F		18000 	// Hz
@@ -27,7 +24,7 @@
 #define CNTS_FROM_US(xxx)		((xxx * 1000) / PULSE_NS_PER_CNT)
 #define MAX_RELOAD              0xFFFF
 
-typedef struct PWM_OUTPUT
+typedef struct PWM_Out
 {
 	TIM_HandleTypeDef 	timer;
 	float 				dutyCycle;
@@ -36,13 +33,10 @@ typedef struct PWM_OUTPUT
 	TIM_TypeDef*		TIM;
 } PWM_Out;
 
-extern TIM_HandleTypeDef timer_PWM;
-extern PWM_Out PWMtimer;
-
-TIM_HandleTypeDef Initialize_PWM(PWM_Out * PWMType);
-void PWM_adjust_DutyCycle(TIM_HandleTypeDef * pwmHandle, float dutyCycle);
-void PWM_adjust_Frequency(TIM_HandleTypeDef * pwmHandle, uint32_t newFreq);
+TIM_HandleTypeDef PWM_Init(void);
+void PWM_adjust_DutyCycle(float dutyCycle);
+void PWM_adjust_Frequency(uint32_t newFreq);
 void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm);
-int InitPWMOutput(PWM_Out * PWMType);
+int PWM_Init_Output(void);
 
 #endif /* PWM_H_ */

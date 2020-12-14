@@ -1,5 +1,4 @@
 #include "clock.h"
-#include "stm32f4xx.h"
 
 // Background timer for keeping time (25kHz)
 static TIM_HandleTypeDef SamplingTimer 	= { .Instance = TIM9 };
@@ -8,41 +7,35 @@ static volatile uint32_t timeElapMs 	= 0;
 static volatile uint32_t timeElapUsLast = 0;
 static volatile uint32_t timeElapMsLast = 0;
 
-uint32_t clock_GetMs(void)
+uint32_t Clock_GetMs(void)
 {
 	return timeElapMs;
 }
 
-uint32_t clock_GetMsLast(void)
+uint32_t Clock_GetMsLast(void)
 {
 	return timeElapMsLast;
 }
 
-void clock_StartTimer(CLOCK_TIMER *ct, uint32_t periodMs)
+void Clock_StartTimer(ClockTimer *ct, uint32_t periodMs)
 {
-	ct->timeRemaining = periodMs;
-	ct->timeMsLast = timeElapMs;
-	ct->timerActive = 1;
+	ct->timeRemaining 	= periodMs;
+	ct->timeMsLast 		= timeElapMs;
+	ct->timerActive 	= 1;
 }
 
-int clock_UpdateTimer(CLOCK_TIMER *ct)
+int Clock_UpdateTimer(ClockTimer *ct)
 {
 	int rc = 0;
-	if(ct->timeRemaining < (timeElapMs - ct->timeMsLast))
-		rc = 1;
-	else
+	if((timeElapMs - ct->timeMsLast) >= ct->timeRemaining)
 	{
-		ct->timeRemaining -= (timeElapMs - ct->timeMsLast);
-		if(ct->timeRemaining <= 0)
-			rc = 1;
-		else
-			rc = 0;
+		ct->timeMsLast = Clock_GetMs();
+		rc = 1;
 	}
-	ct->timeMsLast = timeElapMs;
 	return rc;
 }
 
-int InitSamplingTimer(void)
+int Clock_InitSamplingTimer(void)
 {
 	__HAL_RCC_TIM9_CLK_ENABLE();
 

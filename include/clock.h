@@ -5,17 +5,18 @@
 
 #define CLOCK_FREQ	25000
 
-typedef struct CLOCK_TIMER
+typedef struct ClockTimer
 {
 	int 		timerActive;
 	uint32_t	timeMsLast;
 	uint32_t	timeRemaining;
-} CLOCK_TIMER;
+} ClockTimer;
 
-uint32_t clock_GetMs(void);
-uint32_t clock_GetMsLast(void);
-void clock_StartTimer(CLOCK_TIMER *ct, uint32_t periodMs);
-int clock_UpdateTimer(CLOCK_TIMER *ct);
-int InitSamplingTimer(void);
+
+uint32_t Clock_GetMs(void);
+uint32_t Clock_GetMsLast(void);
+void Clock_StartTimer(ClockTimer *ct, uint32_t periodMs);
+int Clock_UpdateTimer(ClockTimer *ct);
+int Clock_InitSamplingTimer(void);
 
 #endif /* CLOCK_H_ */

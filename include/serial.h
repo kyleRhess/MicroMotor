@@ -3,27 +3,41 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "stm32f4xx.h"
+#include <string.h>
 
-#define MSG_RATE_HZ(xxx) 	(SAMPLE_RATE / xxx)
+#include "system.h"
 
-#define RX_BUFF_SZ 			37
-#define TX_BUFF_SZ 			37
+#define MSG_RATE_HZ(xxx) 		(SAMPLE_RATE / xxx)
 
-#define START_CHAR 			0xAA
-#define SERIAL_CMD_ACK 		"ACK"
-#define SERIAL_CMD_NAK 		"NAK"
+#define RX_BUFF_SZ 				37
+#define TX_BUFF_SZ 				37
 
-#define CMD_SET_OUT_DAT 	0x01
-#define CMD_SET_OUT_RATE 	0x02
-#define CMD_SET_PID_GAIN 	0x03
+#define START_CHAR 				0xAA
 
-#define SERIAL_MSG_DRONE 	0x01
-#define SERIAL_MSG_GPS	 	0x02
+#define CMD_SET_OUT_DAT 		0x01
+#define CMD_SET_OUT_RATE 		0x02
+#define CMD_SET_PID_GAIN 		0x03
 
-#define SERIAL_MSG_START 	0x4A
-#define SERIAL_CMD_START 	0x7F
-#define SERIAL_CMD_END 		0xF7
+#define CMD_MOTOR_ENABLE		0x00000001
+#define CMD_MOTOR_DISABLE		0x00000002
+#define CMD_MOTOR_PWM			0x00000004
+#define CMD_MOTOR_MODE			0x00000008
+#define CMD_MOTOR_QUERY			0x00000010
+#define CMD_MOTOR_RESET			0x00000020
+
+#define MOTOR_MODE_DISABLE		0x00000001
+#define MOTOR_MODE_ENABLE		0x00000002
+#define MOTOR_MODE_BIPOLAR		0x00000004
+#define MOTOR_MODE_UNIPOLAR		0x00000008
+#define MOTOR_MODE_FORWARD		0x00000010
+#define MOTOR_MODE_BAKWARD		0x00000020
+
+#define MOTOR_MODE_BAKWARD		0x00000020
+#define MOTOR_MODE_BAKWARD		0x00000020
+#define MOTOR_MODE_BAKWARD		0x00000020
+#define MOTOR_MODE_BAKWARD		0x00000020
+#define MOTOR_MODE_BAKWARD		0x00000020
+#define MOTOR_MODE_BAKWARD		0x00000020
 
 #define PWM_INC_F	0.0001f
 
@@ -35,39 +49,21 @@ typedef enum
 	STATUS_ODR,
 	STATUS_PID,
 	STATUS_NUM
-} STATUS;
+} StatusNum;
 
-extern uint8_t uartRx[RX_BUFF_SZ];
-extern uint8_t uartTx[TX_BUFF_SZ];
+typedef struct DataFields
+{
+	float		pwmValue; 	// 1
+	uint32_t	driveMode;	// 2
+	float		rpmValue;	// 3
+	uint32_t	encoderCnt;	// 4
+	uint32_t	TBD3;	// 5
+	uint32_t	TBD4;	// 6
+	uint32_t	TBD5;	// 7
+} __attribute__((__packed__)) DataFields;
 
-uint8_t 	rxIndexA;
-uint8_t 	rxIndexB;
-uint8_t 	rxBufferSwitch;
-uint16_t 	connLoss;
-uint8_t 	firstSync;
-uint16_t 	serialODR;
-uint8_t 	serialMSG;
-uint8_t		handshakeCMD;
-
-struct DataMsg {
-	uint8_t start;
-	uint32_t dat[32];
-	uint32_t cksum;
-} __attribute__((__packed__));
-
-
-
-
-struct DataMsg datMsg;
-
-int InitSerial(uint32_t baudrate, uint32_t stopbits, uint32_t datasize, uint32_t parity);
-void MX_DMA_Init(void);
-void tx_serial_data(uint8_t *pData, uint16_t Size);
-void rx_serial_data(uint8_t *pData, uint16_t Size);
-void crc32_(const void *data, size_t n_bytes, uint32_t* crc);
-void crc32(const void *data, size_t n_bytes, uint32_t* crc);
-float toFloat(uint8_t bytes[], int startI);
-void decodePIDGains(uint8_t *payload);
-
+int Serial_InitPort(uint32_t baudrate, uint32_t stopbits, uint32_t datasize, uint32_t parity);
+void Serial_RxData(uint16_t Size);
+void Serial_TxData(uint16_t Size);
 
 #endif /* SERIAL_H_ */

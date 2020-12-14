@@ -1,23 +1,23 @@
 #include "encoder.h"
-#include "system.h"
 
-TIM_HandleTypeDef q_time;
+static TIM_HandleTypeDef qTimer;
+
 
 /**
   * @brief TIM5 Initialization Function
   * @param None
   * @retval None
   */
-void encoder_Init(TIM_HandleTypeDef *timer)
+void Encoder_Init(void)
 {
 	TIM_Encoder_InitTypeDef sConfig = {0};
 	TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-	timer->Instance 			= TIM5;
-	timer->Init.Prescaler 		= 0;
-	timer->Init.CounterMode 	= TIM_COUNTERMODE_UP;
-	timer->Init.Period 			= 0xFFFFFFFF;
-	timer->Init.ClockDivision 	= TIM_CLOCKDIVISION_DIV1;
+	qTimer.Instance 			= TIM5;
+	qTimer.Init.Prescaler 		= 0;
+	qTimer.Init.CounterMode 	= TIM_COUNTERMODE_UP;
+	qTimer.Init.Period 		= 0xFFFFFFFF;
+	qTimer.Init.ClockDivision 	= TIM_CLOCKDIVISION_DIV1;
 	sConfig.EncoderMode 		= TIM_ENCODERMODE_TI12;
 	sConfig.IC1Polarity 		= TIM_ICPOLARITY_RISING;
 	sConfig.IC1Selection 		= TIM_ICSELECTION_DIRECTTI;
@@ -28,7 +28,7 @@ void encoder_Init(TIM_HandleTypeDef *timer)
 	sConfig.IC2Prescaler 		= TIM_ICPSC_DIV1;
 	sConfig.IC2Filter 			= 0;
 
-	if (HAL_TIM_Encoder_Init(timer, &sConfig) != HAL_OK)
+	if (HAL_TIM_Encoder_Init(&qTimer, &sConfig) != HAL_OK)
 	{
 		while(1){;;}
 	}
@@ -36,15 +36,15 @@ void encoder_Init(TIM_HandleTypeDef *timer)
 	sMasterConfig.MasterOutputTrigger 	= TIM_TRGO_RESET;
 	sMasterConfig.MasterSlaveMode 		= TIM_MASTERSLAVEMODE_DISABLE;
 
-	if (HAL_TIMEx_MasterConfigSynchronization(timer, &sMasterConfig) != HAL_OK)
+	if (HAL_TIMEx_MasterConfigSynchronization(&qTimer, &sMasterConfig) != HAL_OK)
 	{
 		while(1){;;}
 	}
 
-	HAL_TIM_Encoder_Start(timer, TIM_CHANNEL_1 | TIM_CHANNEL_2);
+	HAL_TIM_Encoder_Start(&qTimer, TIM_CHANNEL_1 | TIM_CHANNEL_2);
 }
 
-void encoder_ZInit(void)
+void Encoder_ZInit(void)
 {
 	// OUT_Z pin setup
 	GPIO_InitTypeDef gZPin;
@@ -56,6 +56,16 @@ void encoder_ZInit(void)
 	/* EXTI interrupt init*/
 	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 1);
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+}
+
+uint32_t Encoder_GetCounts(void)
+{
+	return qTimer.Instance->CNT;
+}
+
+void Encoder_Reset(void)
+{
+	qTimer.Instance->CNT = 0;
 }
 
 /**

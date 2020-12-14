@@ -2,11 +2,13 @@
 #define ENCODER_H_
 
 #include <stdio.h>
+
 #include "stm32f4xx.h"
+#include "system.h"
 
-extern TIM_HandleTypeDef q_time;
-
-void encoder_Init(TIM_HandleTypeDef *timer);
-void encoder_ZInit(void);
+void Encoder_Init(void);
+void Encoder_ZInit(void);
+uint32_t Encoder_GetCounts(void);
+void Encoder_Reset(void);
 
 #endif /* ENCODER_H_ */

@@ -1,14 +1,11 @@
 #include "hall.h"
-#include "serial.h"
-#include "system.h"
-#include "signal.h"
 
+static void hall_monitor(uint8_t hall_num, int state);
 
 static volatile uint32_t hall_steps 	= 0;
 static volatile int hall_state[3] 		= {0};
 static volatile int hall_stateLast[3] 	= {-1};
-
-float hall_currentRpmValue = 0.0f;
+static float hall_currentRpmValue 		= 0.0f;
 
 
 static void hall_monitor(uint8_t hall_num, int state)
@@ -20,7 +17,7 @@ static void hall_monitor(uint8_t hall_num, int state)
 	if(hall_state[hall_num] != hall_stateLast[hall_num])
 	{
 		hall_stateLast[hall_num] = hall_state[hall_num];
-		signal_MuxUpdate();
+		Signal_MuxUpdate();
 
 		// inc hall state steps
 		hall_steps++;
@@ -47,7 +44,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
-void Hall_Input_Init(void)
+void Hall_InputInit(void)
 {
 	GPIO_InitTypeDef gAPin;
 	gAPin.Pin 		= HALL_A_PIN | HALL_B_PIN | HALL_C_PIN;
@@ -60,18 +57,23 @@ void Hall_Input_Init(void)
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
-void Hall_Compute_RPM(float timeStep)
+void Hall_ComputeRPM(float timeStep)
 {
-	hall_currentRpmValue = hall_currentRpmValue*0.6f + ((((float)get_hall_steps() / 24.0f) / timeStep) * 60.0f)*0.4f;
-	set_hall_steps(0);
+	hall_currentRpmValue = hall_currentRpmValue*0.6f + ((((float)Hall_GetSteps() / 24.0f) / timeStep) * 60.0f)*0.4f;
+	Hall_SetSteps(0);
 }
 
-uint32_t get_hall_steps(void)
+float Hall_GetRPM(void)
+{
+	return hall_currentRpmValue;
+}
+
+uint32_t Hall_GetSteps(void)
 {
 	return hall_steps;
 }
 
-void set_hall_steps(uint32_t val)
+void Hall_SetSteps(uint32_t val)
 {
 	hall_steps = val;
 }

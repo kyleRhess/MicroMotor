@@ -1,7 +1,21 @@
 #ifndef SYSTEM_H_ /* include guard */
 #define SYSTEM_H_
 
+#include "clock.h"
+#include "cmsis_device.h"
+#include "diag/Trace.h"
+#include "encoder.h"
+#include "hall.h"
+#include "main.h"
+#include "pid.h"
+#include "pwm.h"
+#include "serial.h"
+#include "signal.h"
+#include "stm32f4xx.h"
 #include "stm32f4xx_hal.h"
+#include "stm32f4xx_hal_conf_template.h"
+#include "stm32f4xx_hal_tim.h"
+#include "stm32f4xx_hal_tim_ex.h"
 
 #define HALL_PORT 			GPIOC
 #define HALL_A_PIN			GPIO_PIN_11
@@ -23,9 +37,8 @@
 #define PWM_POS_PIN			GPIO_PIN_8
 #define PWM_NEG_PIN			GPIO_PIN_9
 
-void WritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
-uint8_t ReadPin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
-
-float mapVal(float x, float in_min, float in_max, float out_min, float out_max);
+void System_WritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
+uint8_t System_ReadPin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
+float System_mapVal(float x, float in_min, float in_max, float out_min, float out_max);
 
 #endif /* SYSTEM_H_ */

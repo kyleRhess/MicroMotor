@@ -40,17 +40,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 
-#include "clock.h"
-#include "cmsis_device.h"
-#include "diag/Trace.h"
-#include "encoder.h"
-#include "hall.h"
-#include "main.h"
-#include "pid.h"
-#include "pwm.h"
-#include "serial.h"
-#include "signal.h"
-#include "spi.h"
 #include "system.h"
 
 // Function declarations
@@ -64,8 +53,8 @@ static void MX_GPIO_Init(void);
 #pragma GCC diagnostic ignored "-Wmissing-declarations"
 #pragma GCC diagnostic ignored "-Wreturn-type"
 
-static CLOCK_TIMER checktimer;
-PID_Controller speedControl;
+static ClockTimer checktimer;
+static PID_Controller speedControl;
 
 int main(int argc, char* argv[])
 {
@@ -74,13 +63,13 @@ int main(int argc, char* argv[])
 	HAL_Init();
 
 	// Start PWM output (positive & negative)
-	InitPWMOutput(&PWMtimer);
+	PWM_Init_Output();
 
 	// Start background timer (25kHz)
-	InitSamplingTimer();
+	Clock_InitSamplingTimer();
 
-	// Start timer to count encoder pulses
-	encoder_Init(&q_time);
+	// Start timer to count rotary encoder signals
+	Encoder_Init();
 
 	// Set background timer interrupt priority
 	HAL_NVIC_SetPriority(TIM1_BRK_TIM9_IRQn, 1, 0);
@@ -91,19 +80,19 @@ int main(int argc, char* argv[])
 	RCC->AHB1ENR 	|= RCC_AHB1ENR_GPIOBEN;
 
 	// MUX pins setup
-	signal_Init();
+	Signal_Init();
 	MX_GPIO_Init();
 
 	// Setup rotary encoder inputs
-	encoder_ZInit();
+	Encoder_ZInit();
 
 	// Setup hall sensor inputs from BLDC motor
-	Hall_Input_Init();
+	Hall_InputInit();
 
 	// Setup serial interface
-	InitSerial(921600, UART_STOPBITS_1, UART_WORDLENGTH_8B, UART_PARITY_NONE);
+	Serial_InitPort(921600, UART_STOPBITS_1, UART_WORDLENGTH_8B, UART_PARITY_NONE);
 
-	rx_serial_data(uartRx, RX_BUFF_SZ);
+	Serial_RxData(RX_BUFF_SZ);
 
 	PID_Initialize(&speedControl);
 	PID_SetKp(&speedControl, 0.0405f);
@@ -112,22 +101,19 @@ int main(int argc, char* argv[])
 	speedControl.deltaTime = 0.005f;
 	PID_SetSetpoint(&speedControl, 1000.0f);
 
-	clock_StartTimer(&checktimer, 10);
-	clock_StartTimer(&checktimer, 1);
+	Clock_StartTimer(&checktimer, 10);
 
 	while (1)
 	{
-		static uint32_t msLast = 0;
-		if((clock_GetMs() - msLast) >= 100)
+		if(Clock_UpdateTimer(&checktimer))
 		{
-			Hall_Compute_RPM(0.1f);
+			Hall_ComputeRPM(0.01f);
 
-			msLast = clock_GetMs();
-
-			signal_currentPwmValue = (float)q_time.Instance->CNT;
+			float deltaDegrees 	= ((float)(int32_t)Encoder_GetCounts() * (360.0f / (6000.0f * 4.0f)));
+			Signal_SetMotorPWM(System_mapVal(deltaDegrees, -360.0f, 360.0f, -100.0f, 100.0f));
 
 			// In case motor is frozen when starting
-			if(signal_currentPwmValue > 0.0f && hall_currentRpmValue <= 1.0f)
+			if(Signal_GetMotorPWM() > 0.0f && Hall_GetRPM() <= 1.0f)
 				HAL_GPIO_EXTI_Callback(HALL_A_PIN);
 		}
 	}

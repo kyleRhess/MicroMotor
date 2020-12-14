@@ -1,7 +1,7 @@
 #ifndef HALL_H_ /* include guard */
 #define HALL_H_
 
-#include "stm32f4xx.h"
+#include "system.h"
 
 //#define BI_POLAR
 #ifndef BI_POLAR
@@ -53,13 +53,12 @@
 #define STATE_5		!READ_H(HALL_A_PIN) && !READ_H(HALL_B_PIN) 	&& READ_H(HALL_C_PIN)
 #define STATE_6		READ_H(HALL_A_PIN) 	&& !READ_H(HALL_B_PIN) 	&& READ_H(HALL_C_PIN)
 
-extern float hall_currentRpmValue;
 
-void Encoder_Z_Init(void);
-void Hall_Compute_RPM(float timeStep);
-void Hall_Input_Init(void);
-uint32_t get_hall_steps(void);
-void set_hall_steps(uint32_t val);
+void Hall_ComputeRPM(float timeStep);
+void Hall_InputInit(void);
+float Hall_GetRPM(void);
+uint32_t Hall_GetSteps(void);
+void Hall_SetSteps(uint32_t val);
 
 
 #endif /* HALL_H_ */
