@@ -1,8 +1,28 @@
 
 #include "pwm.h"
 
+static void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
+
 static TIM_HandleTypeDef timer_PWM;
 static PWM_Out PWMtimer;
+
+static void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	if(htim_pwm->Instance==TIM1)
+	{
+		/* Peripheral clock enable */
+		__TIM1_CLK_ENABLE();
+		RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+
+		GPIO_InitStruct.Pin 		= PWM_POS_PIN | PWM_NEG_PIN;
+		GPIO_InitStruct.Mode 		= GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull 		= GPIO_PULLDOWN;
+		GPIO_InitStruct.Speed 		= GPIO_SPEED_LOW;
+		GPIO_InitStruct.Alternate 	= GPIO_AF1_TIM1;
+		HAL_GPIO_Init(PWM_PORT, &GPIO_InitStruct);
+	}
+}
 
 int PWM_Init_Output()
 {
@@ -66,8 +86,6 @@ void PWM_adjust_DutyCycle(float dutyCycle)
 	timer_PWM.Instance->CCR4 = counts_Ccr;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
 }
 
-
-
 void PWM_adjust_Frequency(uint32_t newFreq)
 {
 	uint32_t period_cycles = CLOCK_CYCLES_PER_SECOND / newFreq;
@@ -82,22 +100,4 @@ void PWM_adjust_Frequency(uint32_t newFreq)
 	timer_PWM.Instance->CCR2 = (uint32_t)duty;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
 	timer_PWM.Instance->CCR3 = (uint32_t)duty;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
 	timer_PWM.Instance->CCR4 = (uint32_t)duty;  /*Change CCR1 to appropriate channel, or pass it in with function.*/
-}
-
-void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
-{
-	GPIO_InitTypeDef GPIO_InitStruct;
-	if(htim_pwm->Instance==TIM1)
-	{
-		/* Peripheral clock enable */
-		__TIM1_CLK_ENABLE();
-		RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
-
-		GPIO_InitStruct.Pin 		= PWM_POS_PIN | PWM_NEG_PIN;
-		GPIO_InitStruct.Mode 		= GPIO_MODE_AF_PP;
-		GPIO_InitStruct.Pull 		= GPIO_PULLDOWN;
-		GPIO_InitStruct.Speed 		= GPIO_SPEED_LOW;
-		GPIO_InitStruct.Alternate 	= GPIO_AF1_TIM1;
-		HAL_GPIO_Init(PWM_PORT, &GPIO_InitStruct);
-	}
 }
