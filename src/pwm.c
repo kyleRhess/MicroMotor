@@ -1,12 +1,10 @@
 
 #include "pwm.h"
 
-static void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
-
 static TIM_HandleTypeDef timer_PWM;
 static PWM_Out PWMtimer;
 
-static void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
+void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
 {
 	GPIO_InitTypeDef GPIO_InitStruct;
 	if(htim_pwm->Instance==TIM1)
