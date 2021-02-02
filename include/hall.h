@@ -3,7 +3,7 @@
 
 #include "system.h"
 
-//#define BI_POLAR
+#define BI_POLAR
 #ifndef BI_POLAR
 #define UNI_POLAR
 #endif
