@@ -2094,7 +2094,7 @@ F 2 "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm" H 10000 950 50  0001 L CIN
 F 3 "http://www.ti.com/lit/ds/symlink/lm2594.pdf" H 9800 1300 50  0001 C CNN
 F 4 "LM2594HVM-12/NOPB-ND" H 9800 1200 50  0001 C CNN "PN"
 F 5 "60V" H 9800 1200 50  0001 C CNN "Voltage"
-F 6 "LM2594HVMX-ADJ/NOPBCT-ND" H 9800 1200 50  0001 C CNN "Digi-Key_PN"
+F 6 "LM2594HVM-12/NOPB-ND" H 9800 1200 50  0001 C CNN "Digi-Key_PN"
 	1    9800 1200
 	1    0    0    -1  
 $EndComp
@@ -2164,10 +2164,10 @@ L Device:L L1
 U 1 1 60712361
 P 10650 1200
 F 0 "L1" V 10840 1200 50  0000 C CNN
-F 1 "100uH" V 10749 1200 50  0000 C CNN
+F 1 "330uH" V 10749 1200 50  0000 C CNN
 F 2 "Inductor_SMD:L_Taiyo-Yuden_NR-80xx" H 10650 1200 50  0001 C CNN
-F 3 "https://www.digikey.com/en/products/detail/taiyo-yuden/NR8040T101M/1739086" H 10650 1200 50  0001 C CNN
-F 4 "587-2004-1-ND" H 10650 1200 50  0001 C CNN "Digi-Key_PN"
+F 3 "https://www.digikey.com/en/products/detail/pulse-electronics-power/PA4338-334NLT/7943117" H 10650 1200 50  0001 C CNN
+F 4 "553-3995-1-ND" H 10650 1200 50  0001 C CNN "Digi-Key_PN"
 	1    10650 1200
 	0    -1   -1   0   
 $EndComp
