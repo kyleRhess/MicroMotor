@@ -159,9 +159,9 @@ void Signal_MuxUpdate(void)
 	if(STATE_1)
 	{
 #ifdef BI_POLAR
-		signal_SetMuxState(MUX_A, MUX_STATE_P_PWM);
-		signal_SetMuxState(MUX_B, MUX_STATE_Z);
-		signal_SetMuxState(MUX_C, MUX_STATE_M_PWM);
+		Signal_SetMuxState(MUX_A, MUX_STATE_P_PWM);
+		Signal_SetMuxState(MUX_B, MUX_STATE_Z);
+		Signal_SetMuxState(MUX_C, MUX_STATE_M_PWM);
 #else
 		Signal_SetMuxState(MUX_A, MUX_STATE_P_PWM_T);
 		Signal_SetMuxState(MUX_B, MUX_STATE_Z);
