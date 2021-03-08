@@ -2,6 +2,8 @@
 
 static TIM_HandleTypeDef qTimer;
 
+uint32_t sens51[8] = {0};
+uint32_t sens52[8] = {0};
 
 /**
   * @brief TIM5 Initialization Function
@@ -16,7 +18,7 @@ void Encoder_Init(void)
 	qTimer.Instance 			= TIM5;
 	qTimer.Init.Prescaler 		= 0;
 	qTimer.Init.CounterMode 	= TIM_COUNTERMODE_UP;
-	qTimer.Init.Period 		= 0xFFFFFFFF;
+	qTimer.Init.Period 			= 0xFFFFFFFF;
 	qTimer.Init.ClockDivision 	= TIM_CLOCKDIVISION_DIV1;
 	sConfig.EncoderMode 		= TIM_ENCODERMODE_TI12;
 	sConfig.IC1Polarity 		= TIM_ICPOLARITY_RISING;
@@ -54,7 +56,7 @@ void Encoder_ZInit(void)
 	gZPin.Speed 	= GPIO_SPEED_HIGH;
 	HAL_GPIO_Init(ENCODER_Z_PORT, &gZPin);
 	/* EXTI interrupt init*/
-	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 1);
+	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 2, 2);
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
@@ -110,6 +112,7 @@ void HAL_TIM_Encoder_MspInit(TIM_HandleTypeDef* htim_encoder)
     HAL_GPIO_Init(ENCODER_PORT, &GPIO_InitStruct);
 
   /* USER CODE BEGIN TIM5_MspInit 1 */
+
 
   /* USER CODE END TIM5_MspInit 1 */
   }

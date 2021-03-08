@@ -47,14 +47,12 @@ static uint32_t proc_command(uint32_t command)
 			Encoder_Reset();
 			Signal_SetMotorPWM(0.0f);
 			Signal_SetMotorState(MOTOR_MODE_DISABLE);
-
-
 			break;
 		case CMD_MOTOR_QUERY:
 			rc = command;
-			txCmdData.pwmValue 		= Signal_GetMotorPWM();
+			txCmdData.pwmValue 		= speed;//Hall_GetRPM();// Signal_GetMotorPWM();
 			txCmdData.driveMode 	= Signal_GetMotorMode();
-			txCmdData.rpmValue 		= Hall_GetRPM();
+			txCmdData.rpmValue 		= mechAngle/4.0f;//Hall_GetRPM();
 			txCmdData.encoderCnt 	= Encoder_GetCounts();
 			break;
 		case CMD_MOTOR_ENABLE:
@@ -69,6 +67,17 @@ static uint32_t proc_command(uint32_t command)
 			rc = command;
 			memcpy(&rxCmdData, &uartRxBuff[1+4], sizeof(rxCmdData));
 			Signal_SetMotorPWM(rxCmdData.pwmValue);
+			break;
+		case CMD_MOTOR_POSITION:
+			rc = command;
+			memcpy(&rxCmdData, &uartRxBuff[1+4], sizeof(rxCmdData));
+			Signal_SetMotorPos(rxCmdData.posValue);
+			break;
+		case CMD_MOTOR_PARMS:
+			rc = command;
+			memcpy(&rxCmdData, &uartRxBuff[1+4], sizeof(rxCmdData));
+			Signal_SetMotorPosKp(rxCmdData.posKp);
+			Signal_SetMotorPosKi(rxCmdData.posKi);
 			break;
 		default:
 			break;
@@ -317,7 +326,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 	    __HAL_LINKDMA(huart, hdmatx, hdma_usart1_tx);
 
 		/* USER CODE BEGIN USART1_MspInit 1 */
-		HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
+		HAL_NVIC_SetPriority(USART1_IRQn, 1, 1);
 		HAL_NVIC_EnableIRQ(USART1_IRQn);
 		/* USER CODE END USART1_MspInit 1 */
 	  }

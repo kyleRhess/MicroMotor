@@ -11,4 +11,7 @@ void Encoder_ZInit(void);
 uint32_t Encoder_GetCounts(void);
 void Encoder_Reset(void);
 
+extern uint32_t sens51[8];
+extern uint32_t sens52[8];
+
 #endif /* ENCODER_H_ */

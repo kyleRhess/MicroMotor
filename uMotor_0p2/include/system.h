@@ -37,6 +37,12 @@
 #define PWM_POS_PIN			GPIO_PIN_8
 #define PWM_NEG_PIN			GPIO_PIN_9
 
+#define ADC_PORT			GPIOA
+#define ADC_A_PIN			GPIO_PIN_3
+#define ADC_B_PIN			GPIO_PIN_2
+#define ADC_BAT_PORT		GPIOC
+#define ADC_BAT_PIN			GPIO_PIN_5
+
 void System_WritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
 uint8_t System_ReadPin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
 float System_mapVal(float x, float in_min, float in_max, float out_min, float out_max);

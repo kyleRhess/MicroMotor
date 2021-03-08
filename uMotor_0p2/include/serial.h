@@ -24,6 +24,8 @@
 #define CMD_MOTOR_MODE			0x00000008
 #define CMD_MOTOR_QUERY			0x00000010
 #define CMD_MOTOR_RESET			0x00000020
+#define CMD_MOTOR_POSITION		0x00000040
+#define CMD_MOTOR_PARMS			0x00000080
 
 #define MOTOR_MODE_DISABLE		0x00000001
 #define MOTOR_MODE_ENABLE		0x00000002
@@ -57,9 +59,9 @@ typedef struct DataFields
 	uint32_t	driveMode;	// 2
 	float		rpmValue;	// 3
 	uint32_t	encoderCnt;	// 4
-	uint32_t	TBD3;	// 5
-	uint32_t	TBD4;	// 6
-	uint32_t	TBD5;	// 7
+	float		posValue;	// 5
+	float		posKp;	// 6
+	float		posKi;	// 7
 } __attribute__((__packed__)) DataFields;
 
 int Serial_InitPort(uint32_t baudrate, uint32_t stopbits, uint32_t datasize, uint32_t parity);

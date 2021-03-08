@@ -80,6 +80,24 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 /* USER CODE BEGIN Private defines */
 
+int InitPWMOutput(void);
+void Run_SVM(void);
+
+extern float rotor_theta_init;
+extern float rotor_theta_init_L;
+extern int reversing;
+extern int a_state;
+extern int b_state;
+extern int c_state;
+extern float mechAngle;
+extern float mechAngleoffset;
+extern float currentA;
+extern float currentB;
+extern float i_d;
+extern float i_q;
+extern float speed;
+extern float velintegrator;
+extern float velest;
 
 /* USER CODE END Private defines */
 
