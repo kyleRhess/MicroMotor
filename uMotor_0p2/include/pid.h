@@ -32,5 +32,7 @@ void PID_SetKd		(PID_Controller * _PID, float derivative_gain);
 void PID_Reset		(PID_Controller * _PID);
 float PID_GetOutput	(PID_Controller * _PID);
 void PID_SetOutput	(PID_Controller * _PID, float newOutput);
+float PID_GetSetpoint(PID_Controller * _PID);
+float PID_GetLastInput(PID_Controller * _PID);
 
 #endif /* PID_H_ */

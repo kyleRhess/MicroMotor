@@ -76,23 +76,18 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	}
 #endif
 
-static int onetime = 0;
-static float tempf = 0;
-
 	if((rotor_theta_init_L - rotor_theta_init) == 60 || (rotor_theta_init_L - rotor_theta_init) == -300)
 	{
-		if(reversing == 0) onetime = 1;
 		reversing = 1;
 	}
 	else
 	{
-		if(reversing == 1) onetime = 1;
 		reversing = 0;
 	}
 
 	rotor_theta_init_L = rotor_theta_init;
 
-	mechAngleoffset = -((float)(int32_t)Encoder_GetCounts() * 0.06f) + tempf;
+	mechAngleoffset = -((float)(int32_t)Encoder_GetCounts() * 0.06f);
 
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 #endif

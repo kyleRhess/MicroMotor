@@ -80,6 +80,16 @@ void PID_SetOutput(PID_Controller * _PID, float newOutput)
 	_PID->controllerOutput = newOutput;
 }
 
+float PID_GetSetpoint(PID_Controller * _PID)
+{
+	return _PID->setPoint;
+}
+
+float PID_GetLastInput(PID_Controller * _PID)
+{
+	return _PID->lastInput;
+}
+
 void PID_SetKp(PID_Controller * _PID, float proportional_gain)
 {
 	_PID->kP = proportional_gain;

@@ -66,6 +66,11 @@
 #define ADC_ZERO 			1.65f
 #define ADC_RES 			13.33333333f
 
+#define MAX_CURRENT			3.5f
+
+#define POS_CONTROL
+//#define SPD_CONTROL
+
 //#define	FAST_TRIG
 //#define	SINE_MODULATION
 
@@ -101,7 +106,13 @@ float i_d 					= 0;
 float i_q 					= 0;
 float speed					= 0;
 float velintegrator 		= 0;
-float velest 		= 0;
+float velest 				= 0;
+float rotor_theta			= 0.0f;
+
+int thisEncCounts 			= 0;
+int lastEncCounts 			= 0;
+int ticksBetween 			= 0;
+int ticksBetweenLast 		= 0;
 
 #define ADC_BUF_LEN 3
 uint32_t g_ADCValue1 = 0;
@@ -110,10 +121,10 @@ float g_ADCValue3 = 0;
 uint32_t g_ADCBuffer[ADC_BUF_LEN];
 PWM_Out PWMtimer;
 
-static PID_Controller pi_axis_d;
-static PID_Controller pi_axis_q;
-static PID_Controller pi_speed;
-static PID_Controller pi_pos;
+PID_Controller pi_axis_d;
+PID_Controller pi_axis_q;
+PID_Controller pi_speed;
+PID_Controller pi_pos;
 
 //static int InitSamplingTimer(void);
 static void MX_GPIO_Init(void);
@@ -182,40 +193,45 @@ int main(int argc, char* argv[])
 
 	Serial_RxData(RX_BUFF_SZ);
 
-#define Kp	0.05f
-#define Ki	6.50f
+#define Kp	0.055f
+#define Ki	8.74399996f//6.50f
 
 	pi_axis_d.kP = Kp;
 	pi_axis_d.kI = Ki;
 	pi_axis_d.kD = 0.0f;
 	pi_axis_d.setPoint = 0.0f;
-	pi_axis_d.deltaTime = (1.0f / 4000.0f);
+	pi_axis_d.deltaTime = (1.0f / 2000.0f);
 	PID_Initialize(&pi_axis_d);
 
 	pi_axis_q.kP = Kp;
 	pi_axis_q.kI = Ki;
 	pi_axis_q.kD = 0.0f;
 	pi_axis_q.setPoint = 0.0f;
-	pi_axis_q.deltaTime = (1.0f / 4000.0f);
+	pi_axis_q.deltaTime = (1.0f / 2000.0f);
 	PID_Initialize(&pi_axis_q);
 
-	pi_speed.kP = 0.00555999996f;
-	pi_speed.kI = 0.0888900012f;
-	pi_speed.kD = 0.0f;
+#if 0
+	pi_speed.kP = 0.0059799999f;//0.00555999996f;
+	pi_speed.kI = 0.0884599984;//0.0888900012f;
+#else
+	pi_speed.kP = 0.002155999996f;
+	pi_speed.kI = 0.0288900012f;
+#endif
+	pi_speed.kD = 0.000001f;
 	pi_speed.setPoint = 0.0f;
-	pi_speed.deltaTime = (1.0f / 1000.0f);
+	pi_speed.deltaTime = (1.0f / 2000.0f);
 	PID_Initialize(&pi_speed);
 
-	pi_pos.kP = 35.0;
-	pi_pos.kI = 0.01;
-	pi_pos.kD = 0.10f;
+	pi_pos.kP = 20.4f;//35.0;
+	pi_pos.kI = 0.0;
+	pi_pos.kD = 0.3f;//0.852f;
 	pi_pos.setPoint = 0.0f;
-	pi_pos.deltaTime = (1.0f / 1000.0f);
+	pi_pos.deltaTime = (1.0f / 2000.0f);
 	PID_Initialize(&pi_pos);
 
 #define Q_WIND		1.0f
 #define D_WIND		1.0f
-#define SPEED_WIND	2.5f	// amps
+#define SPEED_WIND	2.8f	// amps
 #define POS_WIND	4000.0f // deg/s
 
 	pi_axis_d.windupMax 	= D_WIND;
@@ -247,48 +263,68 @@ int main(int argc, char* argv[])
 
 //		pi_speed.kP = Signal_GetMotorPosKp();
 //		pi_speed.kI = Signal_GetMotorPosKi();
+//		pi_axis_q.kP = Kp + Signal_GetMotorPosKp();
+//		pi_axis_q.kI = Ki + Signal_GetMotorPosKi();
 
-//		pi_speed.setPoint = -50.0f;
 
 
 //		if(Clock_GetMsLast() > 40000)
-//			pi_speed.setPoint = 0.0f;
+//			pi_speed.setPoint = 7000.0f;
 //		else if(Clock_GetMsLast() > 35000)
-//			pi_speed.setPoint = 3200.0f;
+//			pi_speed.setPoint = 100.0f;
 //		else if(Clock_GetMsLast() > 30000)
-//			pi_speed.setPoint = 160.0f;
+//			pi_speed.setPoint = 7000.0f;
 //		else if(Clock_GetMsLast() > 25000)
-//			pi_speed.setPoint = 80.0f;
+//			pi_speed.setPoint = 100.0f;
 //		else if(Clock_GetMsLast() > 20000)
-//			pi_speed.setPoint = 40.0f;
+//			pi_speed.setPoint = 7000.0f;
 //		else if(Clock_GetMsLast() > 15000)
-//			pi_speed.setPoint = 20.0f;
+//			pi_speed.setPoint = 100.0f;
 //		else if(Clock_GetMsLast() > 10000)
-//			pi_speed.setPoint = 10.0f;
+//			pi_speed.setPoint = 7000.0f;
+
+		static uint32_t lllsl = 0;
+
 
 		if(Clock_GetMsLast() > 30000)
 			pi_pos.setPoint = 0.0f;
-		else if(Clock_GetMsLast() > 15000)
-			pi_pos.setPoint += 0.0001f;
-		else if(Clock_GetMsLast() > 14000)
+		else if(Clock_GetMsLast() > 20000)
+			pi_pos.setPoint = 0.0001f;
+		else if(Clock_GetMsLast() > 18000)
 			pi_pos.setPoint = -400.0f;
-		else if(Clock_GetMsLast() > 13000)
+		else if(Clock_GetMsLast() > 16000)
 			pi_pos.setPoint = 200.0f;
-		else if(Clock_GetMsLast() > 12000)
+		else if(Clock_GetMsLast() > 14000)
 			pi_pos.setPoint = -100.0f;
-		else if(Clock_GetMsLast() > 11000)
+		else if(Clock_GetMsLast() > 12000)
 			pi_pos.setPoint = 50.0f;
 		else if(Clock_GetMsLast() > 10000)
 			pi_pos.setPoint = 0.0f;
 
-//		pi_pos.setPoint = Signal_GetMotorPos();
+//		if(Clock_GetMsLast() > 10000 && Clock_GetMsLast() - lllsl >= 200)
+//		{
+//			pi_pos.setPoint += 90.0f;
+//			lllsl = Clock_GetMsLast();
+//		}
+//
+//		if(Clock_GetMsLast() > 30000)
+//			pi_pos.setPoint = 0.0f;
+
+
+
+
+
+
+//		pi_speed.setPoint = Signal_GetMotorPos()*20.0f;
+
+
 	}
 }
 
 void Run_SVM(void)
 {
 	// Misc vars
-	static float rotor_theta			= 0.0f;
+//	static float rotor_theta			= 0.0f;
 	static float mechAngleLast			= 0.0f;
 	//static float speed					= 0.0f;
 	static int sector_S 				= -1;
@@ -330,6 +366,13 @@ void Run_SVM(void)
 	static float v_b 					= 0;
 	static float v_c 					= 0;
 #endif
+
+
+	if(Signal_GetMotorState() & MOTOR_MODE_DISABLE)
+	{
+		PWM_Monitor(0.5f, 0.5f, 0.5f);
+		return;
+	}
 
 	if(sector_S == -1)
 	{
@@ -377,49 +420,55 @@ void Run_SVM(void)
 	else
 		rotor_theta  = rotor_theta_init + (mechAngle - mechAngleoffset) - 90.0f;
 
+
+
+
 	// Get time delta between computations
 	deltat = (float)Clock_GetUs() - lastTime;
 	deltat /= 1000000.0f;
 
-	if(deltat >= 0.001f)
+
+//	pi_pos.setPoint = ((float)Clock_GetUsLast()/1000000.0f)*Signal_GetMotorPos();
+	if(Clock_GetMsLast() >= 10000)
+	{
+//		pi_pos.setPoint = 360.0f;
+//		pi_pos.windupMax 		= Signal_GetMotorPosKp()*12000.0f;
+//		pi_pos.windupMin 		= -Signal_GetMotorPosKp()*12000.0f;
+	}
+
+
+	if(deltat >= 0.00001f)
 	{
 		//	Tracking filter velocity estimate
-		posest += velest*deltat;
-		poserr = (mechAngle / 4.0f) - posest;
-		velintegrator += poserr * ki * deltat;
-		velest = poserr * kp + velintegrator;
+//		posest += velest*deltat;
+//		poserr = (mechAngle / 4.0f) - posest;
+//		velintegrator += poserr * ki * deltat;
+//		velest = poserr * kp + velintegrator;
 
+#ifdef POS_CONTROL
 		// Basic speed calc
 		speed = (((mechAngle - mechAngleLast) / deltat))/4.0f;
 
-		// Moving window of position measurements
-//		static float posBuff[6] = {0.0f};
-//		for (int i = 0; i < 6-1; ++i)
-//		{
-//			posBuff[i] = posBuff[i + 1];
-//		}
-//		posBuff[5] = mechAngle/4.0f;
+		if(ticksBetweenLast != 0)
+			velintegrator = (1.0f/(((float)ticksBetweenLast * 25.0f)/1000000.0f))*(360.0f / 24000.0f);
 
 		pi_speed.setPoint = PID_Update(&pi_pos, mechAngle/4.0f);
 		pi_axis_q.setPoint = PID_Update(&pi_speed, speed);
+#endif
+
+#ifdef SPD_CONTROL
+		// Basic speed calc
+		speed = (((mechAngle - mechAngleLast) / deltat))/4.0f;
+
+		if(ticksBetweenLast != 0)
+			velintegrator = (1.0f/(((float)ticksBetweenLast * 25.0f)/1000000.0f))*(360.0f / 24000.0f);
+
+		pi_axis_q.setPoint = PID_Update(&pi_speed, speed);
+#endif
 
 		mechAngleLast = mechAngle;
 
 		lastTime = (float)Clock_GetUs();
-	}
-
-	// 3.3V / 4096 = 0.000805664
-	currentA = ((((float)g_ADCValue3 * ADC_SCALE) - ADC_ZERO) * ADC_RES);
-	currentB = ((((float)g_ADCValue2 * ADC_SCALE) - ADC_ZERO) * ADC_RES);
-
-	// EMRG stop if current gets too high
-#define MAX_CURRENT	3.5f
-	if(currentA > MAX_CURRENT || currentB > MAX_CURRENT || currentA < -MAX_CURRENT || currentB < -MAX_CURRENT )
-	{
-		while(1)
-		{
-			Signal_SetMotorState(MOTOR_MODE_DISABLE);
-		}
 	}
 
 	// Phase currents
@@ -634,25 +683,6 @@ static void MX_DMA_Init(void)
 
 	HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 3, 0);
 	HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-
-	HAL_NVIC_SetPriority(TIM1_UP_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(TIM1_UP_IRQn);
-}
-
-static void MX_USART1_UART_Init(void)
-{
-	huart1.Instance 			= USART1;
-	huart1.Init.BaudRate 		= 115200;
-	huart1.Init.WordLength 		= UART_WORDLENGTH_8B;
-	huart1.Init.StopBits 		= UART_STOPBITS_1;
-	huart1.Init.Parity 			= UART_PARITY_NONE;
-	huart1.Init.Mode 			= UART_MODE_TX_RX;
-	huart1.Init.HwFlowCtl 		= UART_HWCONTROL_NONE;
-	huart1.Init.OverSampling 	= UART_OVERSAMPLING_16;
-	if (HAL_UART_Init(&huart1) != HAL_OK)
-	{
-		Error_Handler();
-	}
 }
 
 /******************************************************************************/
@@ -715,14 +745,30 @@ static void MX_ADC1_Init(void)
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-#define FILT_K		0.3f
+#define FILT_K		0.90f
+
+#ifdef FILT_K
 #define FILT_K_1	(1 - FILT_K)
 	g_ADCValue1 = g_ADCBuffer[0];
 	g_ADCValue2 = g_ADCValue2*FILT_K_1 + ((float)g_ADCBuffer[1])*FILT_K;
 	g_ADCValue3 = g_ADCValue3*FILT_K_1 + ((float)g_ADCBuffer[2])*FILT_K;
+#else
+	g_ADCValue2 = (float)g_ADCBuffer[1];
+	g_ADCValue3 = (float)g_ADCBuffer[2];
+#endif
 
-//	g_ADCValue2 = ((float)g_ADCBuffer[1]);
-//	g_ADCValue3 = ((float)g_ADCBuffer[2]);
+	// 3.3V / 4096 = 0.000805664
+	currentA = ((((float)g_ADCValue3 * ADC_SCALE) - ADC_ZERO) * ADC_RES);
+	currentB = ((((float)g_ADCValue2 * ADC_SCALE) - ADC_ZERO) * ADC_RES);
+
+	// EMRG stop if current gets too high
+	if(currentA > MAX_CURRENT || currentB > MAX_CURRENT || currentA < -MAX_CURRENT || currentB < -MAX_CURRENT )
+	{
+		while(1)
+		{
+			Signal_SetMotorState(MOTOR_MODE_DISABLE);
+		}
+	}
 }
 
 /*

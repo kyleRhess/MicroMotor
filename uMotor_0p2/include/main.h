@@ -49,6 +49,7 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
+#include "pid.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -98,6 +99,17 @@ extern float i_q;
 extern float speed;
 extern float velintegrator;
 extern float velest;
+extern float rotor_theta;
+
+extern int thisEncCounts;
+extern int lastEncCounts;
+extern int ticksBetween;
+extern int ticksBetweenLast;
+
+extern PID_Controller pi_axis_d;
+extern PID_Controller pi_axis_q;
+extern PID_Controller pi_speed;
+extern PID_Controller pi_pos;
 
 /* USER CODE END Private defines */
 

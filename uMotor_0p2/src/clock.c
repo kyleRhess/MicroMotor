@@ -92,9 +92,7 @@ void TIM1_BRK_TIM9_IRQHandler(void)
 	HAL_TIM_IRQHandler(&SamplingTimer);
 }
 
-#define LOOPF	(PWM_F * 2)/1000
-#define TIME_ELAP_US	1000000/(PWM_F * 2)
-#define TIME_ELAP_MS	1000/(PWM_F * 2)
+
 static int timerDivisor = 0;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -104,25 +102,41 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	timeElapUs 		+= TIME_ELAP_US;
 	timerDivisor++;
 
-	if(timerDivisor >= 10)//LOOPF)
+	thisEncCounts = (int)Encoder_GetCounts();
+	if(thisEncCounts == lastEncCounts)
+	{
+		ticksBetween++;
+	}
+	else
+	{
+		if(thisEncCounts < lastEncCounts)
+			ticksBetweenLast = ticksBetween;
+		else
+			ticksBetweenLast = -ticksBetween;
+		ticksBetween = 0;
+	}
+
+	lastEncCounts = thisEncCounts;
+
+	if(timerDivisor >= SVM_DIVISOR)//LOOPF)
 	{
 		timerDivisor 	= 0;
 
+		Run_SVM();
+		m_bRunCurrentLoop = 0;
 
-		if(Clock_GetMsLast() > 10000 && Clock_GetMsLast() < 45000)
+
+		if(Clock_GetMsLast() > 10000 && Clock_GetMsLast() < 3600*1000)//45000)
 		{
-			Run_SVM();
-			m_bRunCurrentLoop = 0;
-			Signal_SetMotorState(MOTOR_MODE_ENABLE);
+			//Signal_SetMotorState(MOTOR_MODE_ENABLE);
 		}
-		else if (Clock_GetMsLast() > 45000)
+		else if (Clock_GetMsLast() > 3600*1000)
 		{
-			Run_SVM();
 			Signal_SetMotorState(MOTOR_MODE_DISABLE);
 		}
 		else
 		{
-			Signal_SetMotorState(MOTOR_MODE_DISABLE);
+			//Signal_SetMotorState(MOTOR_MODE_DISABLE);
 		}
 	}
 
