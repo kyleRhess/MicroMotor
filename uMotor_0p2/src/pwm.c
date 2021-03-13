@@ -1,5 +1,6 @@
 
 #include "PWM.h"
+#include "main.h"
 
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
@@ -205,6 +206,8 @@ void PWM_Set_Duty(TIM_HandleTypeDef * pwmHandle, uint32_t Channel, float dutyCyc
 
 void PWM_adjust_Frequency(TIM_HandleTypeDef * pwmHandle, uint32_t Channel, uint32_t newFreq)
 {
+	newFreq *= 4;
+
 	uint32_t period_cycles = CLOCK_CYCLES_PER_SECOND / newFreq;
 	uint16_t prescaler = (uint16_t)(period_cycles / MAX_RELOAD + 1);
 	uint16_t overflow = (uint16_t)((period_cycles + (prescaler / 2)) / prescaler);

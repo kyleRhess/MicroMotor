@@ -27,7 +27,6 @@ typedef struct ClockTimerus
 	uint32_t	timeRemaining;
 } ClockTimerus;
 
-volatile int m_bRunCurrentLoop;
 
 uint32_t Clock_GetMs(void);
 uint32_t Clock_GetMsLast(void);

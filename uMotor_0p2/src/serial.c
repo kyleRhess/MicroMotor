@@ -50,10 +50,10 @@ static uint32_t proc_command(uint32_t command)
 			break;
 		case CMD_MOTOR_QUERY:
 			rc = command;
-			txCmdData.pwmValue 		= velintegrator;//pi_pos.setPoint;//Hall_GetRPM();// Signal_GetMotorPWM();
+			txCmdData.pwmValue 		= mechAngle/4.0f;//pi_pos.setPoint;//Hall_GetRPM();// Signal_GetMotorPWM();
 			txCmdData.driveMode 	= Signal_GetMotorMode();
 			txCmdData.rpmValue 		= speed;//pi_pos.lastInput;//Hall_GetRPM();
-			txCmdData.encoderCnt 	= Encoder_GetCounts();
+			txCmdData.encoderCnt 	= Clock_GetUsLast();
 			break;
 		case CMD_MOTOR_ENABLE:
 			rc = command;

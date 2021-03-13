@@ -154,28 +154,11 @@ int main(int argc, char* argv[])
 	setHighSystemClk();
 	HAL_Init();
 
-//	InitSerial(115200, UART_STOPBITS_1, UART_WORDLENGTH_8B, UART_PARITY_NONE);
-
-//	HAL_NVIC_SetPriority(TIM1_BRK_TIM9_IRQn, 1, 0);
-//	HAL_NVIC_EnableIRQ(TIM1_BRK_TIM9_IRQn);
-
 	RCC->AHB1ENR 	= RCC_AHB1ENR_GPIOCEN;
 	RCC->AHB1ENR 	|= RCC_AHB1ENR_GPIOAEN;
 	RCC->AHB1ENR 	|= RCC_AHB1ENR_GPIOBEN;
 
 	Signal_Init();
-
-	// OUT_Z pin setup
-//	GPIO_InitTypeDef gZPin;
-//	gZPin.Pin 		= ENCODER_Z_PIN;
-//	gZPin.Mode 		= GPIO_MODE_IT_RISING;
-//	gZPin.Pull 		= GPIO_NOPULL;
-//	gZPin.Speed 	= GPIO_SPEED_HIGH;
-//	HAL_GPIO_Init(ENCODER_Z_PORT, &gZPin);
-
-	/* EXTI interrupt init*/
-//	HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
-//	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 	MX_DMA_Init();
 	MX_GPIO_Init();
@@ -183,7 +166,6 @@ int main(int argc, char* argv[])
 
 	// Start timer to count rotary encoder signals
 	Encoder_Init();
-//	Encoder_ZInit();
 
 	// Setup hall sensor inputs from BLDC motor
 	Hall_InputInit();
@@ -222,9 +204,9 @@ int main(int argc, char* argv[])
 	pi_speed.deltaTime = (1.0f / 2000.0f);
 	PID_Initialize(&pi_speed);
 
-	pi_pos.kP = 20.4f;//35.0;
+	pi_pos.kP = 25.4f;//35.0;
 	pi_pos.kI = 0.0;
-	pi_pos.kD = 0.3f;//0.852f;
+	pi_pos.kD = 0.45f;//0.852f;
 	pi_pos.setPoint = 0.0f;
 	pi_pos.deltaTime = (1.0f / 2000.0f);
 	PID_Initialize(&pi_pos);
@@ -232,7 +214,7 @@ int main(int argc, char* argv[])
 #define Q_WIND		1.0f
 #define D_WIND		1.0f
 #define SPEED_WIND	2.8f	// amps
-#define POS_WIND	4000.0f // deg/s
+#define POS_WIND	6000.0f // deg/s
 
 	pi_axis_d.windupMax 	= D_WIND;
 	pi_axis_d.windupMin 	= -D_WIND;
@@ -243,6 +225,10 @@ int main(int argc, char* argv[])
 	pi_pos.windupMax 		= POS_WIND;
 	pi_pos.windupMin 		= -POS_WIND;
 
+	// Start ADC + DMA before base PWM timer
+	MX_ADC1_Init();
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&g_ADCBuffer, ADC_BUF_LEN);
+
 	HAL_TIM_Base_Start_IT(&PWMtimer.timer);
 	HAL_TIM_PWM_Start(&PWMtimer.timer, TIM_CHANNEL_1);
 	HAL_TIMEx_PWMN_Start(&PWMtimer.timer, TIM_CHANNEL_1);
@@ -251,23 +237,8 @@ int main(int argc, char* argv[])
 	HAL_TIM_PWM_Start(&PWMtimer.timer, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(&PWMtimer.timer, TIM_CHANNEL_3);
 
-	MX_ADC1_Init();
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&g_ADCBuffer, ADC_BUF_LEN);
-
 	while (1)
 	{
-//		if(Clock_GetMsLast() > 25000)
-//			pi_speed.setPoint = 0.0f;
-//		else if(Clock_GetMsLast() > 20000)
-//			pi_speed.setPoint = -1000.0f;
-
-//		pi_speed.kP = Signal_GetMotorPosKp();
-//		pi_speed.kI = Signal_GetMotorPosKi();
-//		pi_axis_q.kP = Kp + Signal_GetMotorPosKp();
-//		pi_axis_q.kI = Ki + Signal_GetMotorPosKi();
-
-
-
 //		if(Clock_GetMsLast() > 40000)
 //			pi_speed.setPoint = 7000.0f;
 //		else if(Clock_GetMsLast() > 35000)
@@ -283,41 +254,43 @@ int main(int argc, char* argv[])
 //		else if(Clock_GetMsLast() > 10000)
 //			pi_speed.setPoint = 7000.0f;
 
-		static uint32_t lllsl = 0;
+//		if(Clock_GetMsLast() > 30000)
+//			pi_pos.setPoint = 0.0f;
+//		else if(Clock_GetMsLast() > 20000)
+//			pi_pos.setPoint = 0.0001f;
+//		else if(Clock_GetMsLast() > 18000)
+//			pi_pos.setPoint = -400.0f;
+//		else if(Clock_GetMsLast() > 16000)
+//			pi_pos.setPoint = 200.0f;
+//		else if(Clock_GetMsLast() > 14000)
+//			pi_pos.setPoint = -100.0f;
+//		else if(Clock_GetMsLast() > 12000)
+//			pi_pos.setPoint = 50.0f;
+//		else if(Clock_GetMsLast() > 10000)
+//			pi_pos.setPoint = 0.0f;
 
+//		pi_speed.setPoint = Signal_GetMotorPos()*20.0f;
 
-		if(Clock_GetMsLast() > 30000)
-			pi_pos.setPoint = 0.0f;
-		else if(Clock_GetMsLast() > 20000)
-			pi_pos.setPoint = 0.0001f;
-		else if(Clock_GetMsLast() > 18000)
-			pi_pos.setPoint = -400.0f;
-		else if(Clock_GetMsLast() > 16000)
-			pi_pos.setPoint = 200.0f;
-		else if(Clock_GetMsLast() > 14000)
-			pi_pos.setPoint = -100.0f;
-		else if(Clock_GetMsLast() > 12000)
-			pi_pos.setPoint = 50.0f;
-		else if(Clock_GetMsLast() > 10000)
-			pi_pos.setPoint = 0.0f;
-
-//		if(Clock_GetMsLast() > 10000 && Clock_GetMsLast() - lllsl >= 200)
+//		static uint32_t lllsl = 0;
+//		static int fwd = 0;
+//		if(Clock_GetMsLast() > 10000 && Clock_GetMsLast() - lllsl >= 1000)
 //		{
-//			pi_pos.setPoint += 90.0f;
+//			if(fwd)
+//			{
+//				fwd = 0;
+//				pi_pos.setPoint += 180.0f;
+//			}
+//			else
+//			{
+//				fwd = 1;
+//				pi_pos.setPoint -= 180.0f;
+//			}
+//
 //			lllsl = Clock_GetMsLast();
 //		}
 //
 //		if(Clock_GetMsLast() > 30000)
 //			pi_pos.setPoint = 0.0f;
-
-
-
-
-
-
-//		pi_speed.setPoint = Signal_GetMotorPos()*20.0f;
-
-
 	}
 }
 
@@ -421,20 +394,14 @@ void Run_SVM(void)
 		rotor_theta  = rotor_theta_init + (mechAngle - mechAngleoffset) - 90.0f;
 
 
-
-
 	// Get time delta between computations
 	deltat = (float)Clock_GetUs() - lastTime;
 	deltat /= 1000000.0f;
 
 
-//	pi_pos.setPoint = ((float)Clock_GetUsLast()/1000000.0f)*Signal_GetMotorPos();
-	if(Clock_GetMsLast() >= 10000)
-	{
-//		pi_pos.setPoint = 360.0f;
+//		pi_pos.setPoint 		= 360.0f;
 //		pi_pos.windupMax 		= Signal_GetMotorPosKp()*12000.0f;
 //		pi_pos.windupMin 		= -Signal_GetMotorPosKp()*12000.0f;
-	}
 
 
 	if(deltat >= 0.00001f)
@@ -743,15 +710,27 @@ static void MX_ADC1_Init(void)
 	}
 }
 
+void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
+{
+
+	currentB = ((((float)g_ADCValue2 * ADC_SCALE) - ADC_ZERO) * ADC_RES);
+}
+
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
+{
+
+	currentB = ((((float)g_ADCValue2 * ADC_SCALE) - ADC_ZERO) * ADC_RES);
+}
+
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 #define FILT_K		0.90f
 
 #ifdef FILT_K
 #define FILT_K_1	(1 - FILT_K)
-	g_ADCValue1 = g_ADCBuffer[0];
-	g_ADCValue2 = g_ADCValue2*FILT_K_1 + ((float)g_ADCBuffer[1])*FILT_K;
-	g_ADCValue3 = g_ADCValue3*FILT_K_1 + ((float)g_ADCBuffer[2])*FILT_K;
+	g_ADCValue1 = g_ADCBuffer[2];
+	g_ADCValue2 = g_ADCValue2*FILT_K_1 + ((float)g_ADCBuffer[0])*FILT_K;
+	g_ADCValue3 = g_ADCValue3*FILT_K_1 + ((float)g_ADCBuffer[1])*FILT_K;
 #else
 	g_ADCValue2 = (float)g_ADCBuffer[1];
 	g_ADCValue3 = (float)g_ADCBuffer[2];
@@ -769,6 +748,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 			Signal_SetMotorState(MOTOR_MODE_DISABLE);
 		}
 	}
+
+	Run_SVM();
 }
 
 /*

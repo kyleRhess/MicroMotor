@@ -97,7 +97,6 @@ static int timerDivisor = 0;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	TIM1->SR  = 0x0;
-	hadc1.Instance->CR2 |= ADC_CR2_SWSTART;
 
 	timeElapUs 		+= TIME_ELAP_US;
 	timerDivisor++;
@@ -121,28 +120,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	if(timerDivisor >= SVM_DIVISOR)//LOOPF)
 	{
 		timerDivisor 	= 0;
-
-		Run_SVM();
-		m_bRunCurrentLoop = 0;
-
-
-		if(Clock_GetMsLast() > 10000 && Clock_GetMsLast() < 3600*1000)//45000)
-		{
-			//Signal_SetMotorState(MOTOR_MODE_ENABLE);
-		}
-		else if (Clock_GetMsLast() > 3600*1000)
-		{
-			Signal_SetMotorState(MOTOR_MODE_DISABLE);
-		}
-		else
-		{
-			//Signal_SetMotorState(MOTOR_MODE_DISABLE);
-		}
+		hadc1.Instance->CR2 |= ADC_CR2_SWSTART;
 	}
 
+	// 1 ms tick
 	if((timeElapUs - timeElapUsLast) >= 1000)
 	{
-		// 1 ms tick
 		timeElapMs += 1;
 		timeElapMsLast = timeElapMs;
 		timeElapUsLast = timeElapUs;
