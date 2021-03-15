@@ -8,6 +8,8 @@ static float signal_currentPosition		= 0.0f;
 static float signal_PositionKp			= 0.0f;
 static float signal_PositionKi			= 0.0f;
 
+static uint32_t signal_DriveState		= MOTOR_MODE_DISABLE;
+
 
 void Signal_Init(void)
 {
@@ -31,6 +33,8 @@ void Signal_SetMotorState(int state)
 		System_WritePin(GPIOB, GPIO_DIS_PIN, 1);
 
 	signal_currentEnableState = state;
+
+	signal_DriveState |= state;
 }
 
 int Signal_GetMotorState()

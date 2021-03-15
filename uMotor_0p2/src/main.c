@@ -70,6 +70,8 @@
 
 #define POS_CONTROL
 //#define SPD_CONTROL
+//#define TRQ_CONTROL
+
 
 //#define	FAST_TRIG
 //#define	SINE_MODULATION
@@ -81,7 +83,7 @@ DMA_HandleTypeDef hdma_adc1;
 
 TIM_HandleTypeDef htim1;
 
-UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart1 = { .Instance = USART1 };
 DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
 
@@ -120,6 +122,31 @@ float g_ADCValue2 = 0;
 float g_ADCValue3 = 0;
 uint32_t g_ADCBuffer[ADC_BUF_LEN];
 PWM_Out PWMtimer;
+
+
+
+
+
+
+typedef struct FloatField
+{
+	float		torqueValue; 	// 1
+	float		torqueReq;		// 2
+	float		speedValue; 	// 3
+	float		speedReq;		// 4
+	float		posValue; 		// 5
+	float		posReq;			// 6
+	float		currentA;		// 7
+	float		currentB;		// 8
+	float		angle;			// 9
+} __attribute__((__packed__)) FloatField;
+
+static uint8_t uartTxBuff[64];
+static FloatField txCmdData;
+
+
+
+
 
 PID_Controller pi_axis_d;
 PID_Controller pi_axis_q;
@@ -192,21 +219,16 @@ int main(int argc, char* argv[])
 	pi_axis_q.deltaTime = (1.0f / 2000.0f);
 	PID_Initialize(&pi_axis_q);
 
-#if 0
-	pi_speed.kP = 0.0059799999f;//0.00555999996f;
-	pi_speed.kI = 0.0884599984;//0.0888900012f;
-#else
-	pi_speed.kP = 0.002155999996f;
-	pi_speed.kI = 0.0288900012f;
-#endif
-	pi_speed.kD = 0.000001f;
+	pi_speed.kP = 0.008512000013f;//0.002155999996f;
+	pi_speed.kI = 0.04739300018f;//0.0288900012f;
+	pi_speed.kD = 0.0f;//0.000001f;
 	pi_speed.setPoint = 0.0f;
 	pi_speed.deltaTime = (1.0f / 2000.0f);
 	PID_Initialize(&pi_speed);
 
 	pi_pos.kP = 25.4f;//35.0;
 	pi_pos.kI = 0.0;
-	pi_pos.kD = 0.45f;//0.852f;
+	pi_pos.kD = 0.0005f;//0.852f;
 	pi_pos.setPoint = 0.0f;
 	pi_pos.deltaTime = (1.0f / 2000.0f);
 	PID_Initialize(&pi_pos);
@@ -214,7 +236,7 @@ int main(int argc, char* argv[])
 #define Q_WIND		1.0f
 #define D_WIND		1.0f
 #define SPEED_WIND	2.8f	// amps
-#define POS_WIND	6000.0f // deg/s
+#define POS_WIND	8000.0f // deg/s
 
 	pi_axis_d.windupMax 	= D_WIND;
 	pi_axis_d.windupMin 	= -D_WIND;
@@ -269,28 +291,47 @@ int main(int argc, char* argv[])
 //		else if(Clock_GetMsLast() > 10000)
 //			pi_pos.setPoint = 0.0f;
 
-//		pi_speed.setPoint = Signal_GetMotorPos()*20.0f;
 
-//		static uint32_t lllsl = 0;
-//		static int fwd = 0;
-//		if(Clock_GetMsLast() > 10000 && Clock_GetMsLast() - lllsl >= 1000)
-//		{
-//			if(fwd)
-//			{
-//				fwd = 0;
-//				pi_pos.setPoint += 180.0f;
-//			}
-//			else
-//			{
-//				fwd = 1;
-//				pi_pos.setPoint -= 180.0f;
-//			}
-//
-//			lllsl = Clock_GetMsLast();
-//		}
-//
-//		if(Clock_GetMsLast() > 30000)
-//			pi_pos.setPoint = 0.0f;
+#ifdef POS_CONTROL
+		static uint32_t lllsl = 0;
+		static int fwd = 0;
+		if(Clock_GetMsLast() < 10000 && Clock_GetMsLast() - lllsl >= 250)
+		{
+			if(fwd)
+			{
+				fwd = 0;
+				pi_pos.setPoint += 90.0f;
+			}
+			else
+			{
+				fwd = 1;
+				pi_pos.setPoint -= 90.0f;
+			}
+
+//			pi_pos.setPoint = Clock_GetTimeS()*6.0f;
+
+			lllsl = Clock_GetMsLast();
+		}
+
+#endif
+
+#ifdef SPD_CONTROL
+		pi_speed.setPoint = Signal_GetMotorPos()/4.0f;
+#endif
+//		pi_pos.setPoint = Clock_GetTimeS()
+
+
+//		pi_speed.kP = Signal_GetMotorPosKp()/10.0f;
+//		pi_speed.kI = Signal_GetMotorPosKi()/10.0f;
+
+//		static float lastSP = 0;
+//		static float lasttime = 0;
+//		pi_pos.windupMax 		= Signal_GetMotorPosKp()*12000.0f;
+//		pi_pos.windupMin 		= -Signal_GetMotorPosKp()*12000.0f;
+//		pi_pos.setPoint = lastSP + (Clock_GetTimeS() - lasttime) * Signal_GetMotorPos()*10.0f;
+//		lasttime = Clock_GetTimeS();
+//		lastSP = pi_pos.setPoint;
+
 	}
 }
 
@@ -315,8 +356,8 @@ void Run_SVM(void)
 	// Estimator vars
 	static float lastTime 				= 0;
 	static float deltat 				= 0;
-	static float ki 					= 90.0f;
-	static float kp 					= 40.0f;
+	static float ki 					= 40.0f;
+	static float kp 					= 9.0f;
 //	static float velest 				= 0;
 	static float posest 				= 0;
 //	static float velintegrator 			= 0;
@@ -340,6 +381,29 @@ void Run_SVM(void)
 	static float v_c 					= 0;
 #endif
 
+
+
+#if 0
+	static int div = 0;
+	div++;
+	if(div == 2)
+	{
+		div = 0;
+
+		txCmdData.angle = rotor_theta;
+		txCmdData.currentA = currentA;
+		txCmdData.currentB = currentB;
+		txCmdData.posReq = pi_pos.setPoint;
+		txCmdData.posValue = pi_pos.lastInput;
+		txCmdData.speedReq = pi_speed.setPoint;
+		txCmdData.speedValue = pi_speed.lastInput;
+		txCmdData.torqueReq = pi_axis_q.setPoint;
+		txCmdData.torqueValue = pi_axis_q.lastInput;
+
+		memcpy(&uartTxBuff[0], &txCmdData, sizeof(txCmdData));
+		Serial_TxData2(uartTxBuff, sizeof(txCmdData));
+	}
+#endif
 
 	if(Signal_GetMotorState() & MOTOR_MODE_DISABLE)
 	{
@@ -398,45 +462,45 @@ void Run_SVM(void)
 	deltat = (float)Clock_GetUs() - lastTime;
 	deltat /= 1000000.0f;
 
-
-//		pi_pos.setPoint 		= 360.0f;
-//		pi_pos.windupMax 		= Signal_GetMotorPosKp()*12000.0f;
-//		pi_pos.windupMin 		= -Signal_GetMotorPosKp()*12000.0f;
-
-
-	if(deltat >= 0.00001f)
+	if(deltat > 0.001f)
 	{
-		//	Tracking filter velocity estimate
-//		posest += velest*deltat;
-//		poserr = (mechAngle / 4.0f) - posest;
-//		velintegrator += poserr * ki * deltat;
-//		velest = poserr * kp + velintegrator;
+		speed = (((mechAngle - mechAngleLast) / deltat))/4.0f;
+		mechAngleLast = mechAngle;
+		lastTime = (float)Clock_GetUs();
+	}
+
+
+	if(Clock_GetMsLast() > 10000)
+		pi_pos.setPoint = Signal_GetMotorPos()*0.15f;
+//	else
+//		pi_pos.setPoint = Clock_GetTimeS()*6.0f;
+
+	//	Tracking filter velocity estimate
+//	posest += velest*deltat;
+//	poserr = (mechAngle / 4.0f) - posest;
+//	velintegrator += poserr * ki * deltat;
+//	velest = poserr * kp + velintegrator;
 
 #ifdef POS_CONTROL
-		// Basic speed calc
-		speed = (((mechAngle - mechAngleLast) / deltat))/4.0f;
 
-		if(ticksBetweenLast != 0)
-			velintegrator = (1.0f/(((float)ticksBetweenLast * 25.0f)/1000000.0f))*(360.0f / 24000.0f);
+	if(ticksBetweenLast != 0)
+		velintegrator = (1.0f/(((float)ticksBetweenLast * 25.0f)/1000000.0f))*(360.0f / 24000.0f);
 
-		pi_speed.setPoint = PID_Update(&pi_pos, mechAngle/4.0f);
-		pi_axis_q.setPoint = PID_Update(&pi_speed, speed);
+	pi_speed.setPoint = PID_Update(&pi_pos, mechAngle/4.0f);
+	pi_axis_q.setPoint = PID_Update(&pi_speed, speed);
 #endif
 
 #ifdef SPD_CONTROL
-		// Basic speed calc
-		speed = (((mechAngle - mechAngleLast) / deltat))/4.0f;
+	if(ticksBetweenLast != 0)
+		velintegrator = (1.0f/(((float)ticksBetweenLast * 25.0f)/1000000.0f))*(360.0f / 24000.0f);
 
-		if(ticksBetweenLast != 0)
-			velintegrator = (1.0f/(((float)ticksBetweenLast * 25.0f)/1000000.0f))*(360.0f / 24000.0f);
-
-		pi_axis_q.setPoint = PID_Update(&pi_speed, speed);
+	pi_axis_q.setPoint = PID_Update(&pi_speed, speed);
 #endif
 
-		mechAngleLast = mechAngle;
+#ifdef TRQ_CONTROL
 
-		lastTime = (float)Clock_GetUs();
-	}
+	pi_axis_q.setPoint = Signal_GetMotorPos()/10000.0f;
+#endif
 
 	// Phase currents
 	i_a 			= currentA; // measured value

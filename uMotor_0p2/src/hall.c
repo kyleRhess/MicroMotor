@@ -25,7 +25,7 @@ static void hall_monitor(uint8_t hall_num, int state)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-#if 1
+#if 0
 	HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 //	switch (GPIO_Pin)
 //	{
@@ -43,7 +43,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 //	}
 
 	// nop's give a slight delay
-#if 1
+
 	__NOP();
 	__NOP();
 	a_state = READ_H(HALL_A_PIN) && HALL_A_PIN;
@@ -74,7 +74,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	{
 		rotor_theta_init = 300.0f;
 	}
-#endif
+
 
 	if((rotor_theta_init_L - rotor_theta_init) == 60 || (rotor_theta_init_L - rotor_theta_init) == -300)
 	{
@@ -102,8 +102,8 @@ void Hall_InputInit(void)
 	gAPin.Speed 	= GPIO_SPEED_LOW;
 	HAL_GPIO_Init(HALL_PORT, &gAPin);
 	/* EXTI interrupt init*/
-	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 1);
-	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+//	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 1);
+//	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 void Hall_ComputeRPM(float timeStep)

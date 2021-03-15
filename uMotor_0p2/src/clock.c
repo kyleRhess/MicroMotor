@@ -8,12 +8,18 @@ static volatile uint32_t timeElapUs 	= 0;
 static volatile uint32_t timeElapMs 	= 0;
 static volatile uint32_t timeElapUsLast = 0;
 static volatile uint32_t timeElapMsLast = 0;
+static volatile float timeElapS 		= 0;
 
 ADC_HandleTypeDef hadc1;
 
 uint32_t Clock_GetMs(void)
 {
 	return timeElapMs;
+}
+
+float Clock_GetTimeS(void)
+{
+	return timeElapS;
 }
 
 uint32_t Clock_GetMsLast(void)
@@ -99,6 +105,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	TIM1->SR  = 0x0;
 
 	timeElapUs 		+= TIME_ELAP_US;
+	timeElapS		+= 0.000025f;
 	timerDivisor++;
 
 	thisEncCounts = (int)Encoder_GetCounts();

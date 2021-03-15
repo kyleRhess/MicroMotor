@@ -28,6 +28,7 @@ typedef struct ClockTimerus
 } ClockTimerus;
 
 
+float Clock_GetTimeS(void);
 uint32_t Clock_GetMs(void);
 uint32_t Clock_GetMsLast(void);
 uint32_t Clock_GetUs(void);

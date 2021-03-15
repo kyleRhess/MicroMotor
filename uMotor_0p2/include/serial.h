@@ -33,8 +33,8 @@
 #define MOTOR_MODE_UNIPOLAR		0x00000008
 #define MOTOR_MODE_FORWARD		0x00000010
 #define MOTOR_MODE_BAKWARD		0x00000020
+#define MOTOR_MODE_OVERCUR		0x00000040
 
-#define MOTOR_MODE_BAKWARD		0x00000020
 #define MOTOR_MODE_BAKWARD		0x00000020
 #define MOTOR_MODE_BAKWARD		0x00000020
 #define MOTOR_MODE_BAKWARD		0x00000020
@@ -67,5 +67,7 @@ typedef struct DataFields
 int Serial_InitPort(uint32_t baudrate, uint32_t stopbits, uint32_t datasize, uint32_t parity);
 void Serial_RxData(uint16_t Size);
 void Serial_TxData(uint16_t Size);
+void Serial_TxData2(uint8_t *txBuff, uint16_t Size);
+void Serial_TxQuery(void);
 
 #endif /* SERIAL_H_ */
