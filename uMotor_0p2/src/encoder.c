@@ -56,13 +56,18 @@ void Encoder_ZInit(void)
 	gZPin.Speed 	= GPIO_SPEED_HIGH;
 	HAL_GPIO_Init(ENCODER_Z_PORT, &gZPin);
 	/* EXTI interrupt init*/
-	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 2, 2);
+	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 2);
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 uint32_t Encoder_GetCounts(void)
 {
 	return qTimer.Instance->CNT;
+}
+
+float Encoder_GetAngle(void)
+{
+	return (float)(int32_t)qTimer.Instance->CNT * 0.015f;
 }
 
 void Encoder_Reset(void)
@@ -76,9 +81,9 @@ void Encoder_Reset(void)
 void EXTI15_10_IRQHandler(void)
 {
 	HAL_GPIO_EXTI_IRQHandler(ENCODER_Z_PIN);
-	HAL_GPIO_EXTI_IRQHandler(HALL_A_PIN);
-	HAL_GPIO_EXTI_IRQHandler(HALL_B_PIN);
-	HAL_GPIO_EXTI_IRQHandler(HALL_C_PIN);
+//	HAL_GPIO_EXTI_IRQHandler(HALL_A_PIN);
+//	HAL_GPIO_EXTI_IRQHandler(HALL_B_PIN);
+//	HAL_GPIO_EXTI_IRQHandler(HALL_C_PIN);
 }
 
 /**

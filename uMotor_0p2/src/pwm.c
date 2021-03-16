@@ -10,7 +10,6 @@ TIM_HandleTypeDef timer_PWM;
 TIM_HandleTypeDef Initialize_PWM(PWM_Out * PWMType)
 {
 	TIM_TypeDef * TIM 	= PWMType->TIM;
-
 	TIM_MasterConfigTypeDef master;
 	TIM_OC_InitTypeDef configOC;
 	TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
@@ -29,42 +28,38 @@ TIM_HandleTypeDef Initialize_PWM(PWM_Out * PWMType)
 
 	HAL_TIM_Base_Init(&timer_PWM);
 
-	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+	sClockSourceConfig.ClockSource 		= TIM_CLOCKSOURCE_INTERNAL;
 	HAL_TIM_ConfigClockSource(&timer_PWM, &sClockSourceConfig);
 
 	HAL_TIM_PWM_Init(&timer_PWM);
-
 	HAL_TIM_OC_Init(&timer_PWM);
 
-	master.MasterOutputTrigger 		= TIM_TRGO_RESET;
-	master.MasterSlaveMode 			= TIM_MASTERSLAVEMODE_DISABLE;
+	master.MasterOutputTrigger 			= TIM_TRGO_RESET;
+	master.MasterSlaveMode 				= TIM_MASTERSLAVEMODE_DISABLE;
 
 	HAL_TIMEx_MasterConfigSynchronization(&timer_PWM, &master);
 
-	configOC.OCMode = TIM_OCMODE_PWM1;
-	configOC.Pulse = 0;
-	configOC.OCPolarity = TIM_OCPOLARITY_LOW;
-	configOC.OCNPolarity = TIM_OCPOLARITY_HIGH;
-	configOC.OCFastMode = TIM_OCFAST_DISABLE;
-	configOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-	configOC.OCNIdleState = TIM_OCIDLESTATE_RESET;
+	configOC.OCMode 					= TIM_OCMODE_PWM1;
+	configOC.Pulse 						= 0;
+	configOC.OCPolarity 				= TIM_OCPOLARITY_LOW;
+	configOC.OCNPolarity 				= TIM_OCPOLARITY_HIGH;
+	configOC.OCFastMode 				= TIM_OCFAST_DISABLE;
+	configOC.OCIdleState 				= TIM_OCIDLESTATE_RESET;
+	configOC.OCNIdleState 				= TIM_OCIDLESTATE_RESET;
 
 	HAL_TIM_PWM_ConfigChannel(&timer_PWM, &configOC, TIM_CHANNEL_1);
-
 	HAL_TIM_PWM_ConfigChannel(&timer_PWM, &configOC, TIM_CHANNEL_2);
-
 	HAL_TIM_PWM_ConfigChannel(&timer_PWM, &configOC, TIM_CHANNEL_3);
 
-	sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
-	sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
-	sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-	sBreakDeadTimeConfig.DeadTime = 500 / 10;
-	sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
-	sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
-	sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+	sBreakDeadTimeConfig.OffStateRunMode 	= TIM_OSSR_DISABLE;
+	sBreakDeadTimeConfig.OffStateIDLEMode 	= TIM_OSSI_DISABLE;
+	sBreakDeadTimeConfig.LockLevel 			= TIM_LOCKLEVEL_OFF;
+	sBreakDeadTimeConfig.DeadTime 			= DEAD_TIME / 10;
+	sBreakDeadTimeConfig.BreakState 		= TIM_BREAK_DISABLE;
+	sBreakDeadTimeConfig.BreakPolarity		= TIM_BREAKPOLARITY_HIGH;
+	sBreakDeadTimeConfig.AutomaticOutput 	= TIM_AUTOMATICOUTPUT_DISABLE;
 
 	HAL_TIMEx_ConfigBreakDeadTime(&timer_PWM, &sBreakDeadTimeConfig);
-
 	HAL_TIM_MspPostInit(&timer_PWM);
 
 	return timer_PWM;
@@ -202,7 +197,6 @@ void PWM_Set_Duty(TIM_HandleTypeDef * pwmHandle, uint32_t Channel, float dutyCyc
 
     }
 }
-
 
 void PWM_adjust_Frequency(TIM_HandleTypeDef * pwmHandle, uint32_t Channel, uint32_t newFreq)
 {

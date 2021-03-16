@@ -1,13 +1,15 @@
 #include "hall.h"
 
+#if 0
 static void hall_monitor(uint8_t hall_num, int state);
-
-static volatile uint32_t hall_steps 	= 0;
 static volatile int hall_state[3] 		= {0};
 static volatile int hall_stateLast[3] 	= {-1};
+#endif
+
+static volatile uint32_t hall_steps 	= 0;
 static float hall_currentRpmValue 		= 0.0f;
 
-
+#if 0
 static void hall_monitor(uint8_t hall_num, int state)
 {
 	// nop's give a slight delay
@@ -22,6 +24,7 @@ static void hall_monitor(uint8_t hall_num, int state)
 		hall_steps++;
 	}
 }
+#endif
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
@@ -75,15 +78,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		rotor_theta_init = 300.0f;
 	}
 
-
 	if((rotor_theta_init_L - rotor_theta_init) == 60 || (rotor_theta_init_L - rotor_theta_init) == -300)
-	{
 		reversing = 1;
-	}
 	else
-	{
 		reversing = 0;
-	}
 
 	rotor_theta_init_L = rotor_theta_init;
 
@@ -100,10 +98,12 @@ void Hall_InputInit(void)
 	gAPin.Mode 		= GPIO_MODE_IT_RISING_FALLING;
 	gAPin.Pull 		= GPIO_NOPULL;
 	gAPin.Speed 	= GPIO_SPEED_LOW;
-	HAL_GPIO_Init(HALL_PORT, &gAPin);
+//	HAL_GPIO_Init(HALL_PORT, &gAPin);
 	/* EXTI interrupt init*/
-//	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 1);
-//	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+#if 0
+	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 1);
+	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+#endif
 }
 
 void Hall_ComputeRPM(float timeStep)

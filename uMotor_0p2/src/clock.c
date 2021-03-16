@@ -1,6 +1,7 @@
+
+
 #include "clock.h"
-#include "pwm.h"
-#include "serial.h"
+#include "adc.h"
 
 // Background timer for keeping time (25kHz)
 static TIM_HandleTypeDef SamplingTimer 	= { .Instance = TIM9 };
@@ -9,8 +10,6 @@ static volatile uint32_t timeElapMs 	= 0;
 static volatile uint32_t timeElapUsLast = 0;
 static volatile uint32_t timeElapMsLast = 0;
 static volatile float timeElapS 		= 0;
-
-ADC_HandleTypeDef hadc1;
 
 uint32_t Clock_GetMs(void)
 {
@@ -98,7 +97,6 @@ void TIM1_BRK_TIM9_IRQHandler(void)
 	HAL_TIM_IRQHandler(&SamplingTimer);
 }
 
-
 static int timerDivisor = 0;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -108,23 +106,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	timeElapS		+= 0.000025f;
 	timerDivisor++;
 
-	thisEncCounts = (int)Encoder_GetCounts();
-	if(thisEncCounts == lastEncCounts)
-	{
-		ticksBetween++;
-	}
-	else
-	{
-		if(thisEncCounts < lastEncCounts)
-			ticksBetweenLast = ticksBetween;
-		else
-			ticksBetweenLast = -ticksBetween;
-		ticksBetween = 0;
-	}
-
-	lastEncCounts = thisEncCounts;
-
-	if(timerDivisor >= SVM_DIVISOR)//LOOPF)
+	if(timerDivisor >= SVM_DIVISOR)
 	{
 		timerDivisor 	= 0;
 		hadc1.Instance->CR2 |= ADC_CR2_SWSTART;

@@ -82,34 +82,8 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 
 int InitPWMOutput(void);
-void Run_SVM(void);
 
-extern float rotor_theta_init;
-extern float rotor_theta_init_L;
-extern int reversing;
-extern int a_state;
-extern int b_state;
-extern int c_state;
-extern float mechAngle;
-extern float mechAngleoffset;
-extern float currentA;
-extern float currentB;
-extern float i_d;
-extern float i_q;
-extern float speed;
-extern float velintegrator;
-extern float velest;
-extern float rotor_theta;
 
-extern int thisEncCounts;
-extern int lastEncCounts;
-extern int ticksBetween;
-extern int ticksBetweenLast;
-
-extern PID_Controller pi_axis_d;
-extern PID_Controller pi_axis_q;
-extern PID_Controller pi_speed;
-extern PID_Controller pi_pos;
 
 /* USER CODE END Private defines */
 

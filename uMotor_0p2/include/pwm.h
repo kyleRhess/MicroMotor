@@ -8,7 +8,7 @@
 #include "stm32f4xx_hal_tim.h"
 #include "stm32f4xx_hal_tim_ex.h"
 
-#define DEAD_TIME				500
+#define DEAD_TIME				500		// ns
 #define PWM_F					20000 	// Hz
 
 #define CLOCK_CYCLES_PER_SECOND 100000000
@@ -28,6 +28,7 @@ typedef struct PWM_OUTPUT
 	TIM_TypeDef*		TIM;
 } PWM_Out;
 
+PWM_Out PWMtimer;
 
 TIM_HandleTypeDef Initialize_PWM(PWM_Out * PWMType);
 void PWM_adjust_DutyCycle(TIM_HandleTypeDef * pwmHandle, uint32_t Channel, float dutyCycle);

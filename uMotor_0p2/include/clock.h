@@ -1,6 +1,7 @@
 #ifndef CLOCK_H_ /* include guard */
 #define CLOCK_H_
 
+#include "system.h"
 #include "stm32f4xx.h"
 
 #define CLOCK_FREQ		25000

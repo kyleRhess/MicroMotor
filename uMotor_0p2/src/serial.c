@@ -6,7 +6,6 @@ static void crc32(const void *data, size_t n_bytes, uint32_t* crc);
 static uint32_t proc_command(uint32_t command);
 static void tx_ack(uint32_t *command);
 static void tx_nak(void);
-static void decodePIDGains(uint8_t *payload);
 static void Serial_DMA_Init(void);
 
 static UART_HandleTypeDef 	s_UARTHandle = { .Instance = USART1 };
@@ -52,7 +51,7 @@ static uint32_t proc_command(uint32_t command)
 			rc = command;
 			txCmdData.pwmValue 		= pi_pos.setPoint;//Hall_GetRPM();// Signal_GetMotorPWM();
 			txCmdData.driveMode 	= Signal_GetMotorMode();
-			txCmdData.rpmValue 		= mechAngle / 4.0f;//pi_pos.lastInput;//Hall_GetRPM();
+			txCmdData.rpmValue 		= m_fMechAngle / 4.0f;//pi_pos.lastInput;//Hall_GetRPM();
 			txCmdData.encoderCnt 	= Clock_GetUsLast();
 			break;
 		case CMD_MOTOR_ENABLE:
@@ -114,11 +113,6 @@ static void tx_nak(void)
 	memcpy(&uartTxBuff[TX_BUFF_SZ-4], &txCrc, 4);
 
 	Serial_TxData(TX_BUFF_SZ);
-}
-
-static void decodePIDGains(uint8_t *payload)
-{
-
 }
 
 static void Serial_DMA_Init(void)
