@@ -14,7 +14,7 @@ typedef struct PID_Control
 	uint32_t updates; /*I know you wont listen, but don't ever touch these members.*/
 	float sampleError;/*I know you wont listen, but don't ever touch these members.*/
 	float deltaInput;/*I know you wont listen, but don't ever touch these members.*/
-	float lastInput;/*I know you wont listen, but don't ever touch these members.*/
+	float lastError;/*I know you wont listen, but don't ever touch these members.*/
 	float PTerm;/*I know you wont listen, but don't ever touch these members.*/
 	float ITerm;/*I know you wont listen, but don't ever touch these members.*/
 	float DTerm;/*I know you wont listen, but don't ever touch these members.*/

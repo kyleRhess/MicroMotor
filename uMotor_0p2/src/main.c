@@ -114,33 +114,29 @@ int main(int argc, char* argv[])
 
 	while (1)
 	{
-#ifdef POS_CONTROL
-//		static uint32_t lllsl = 0;
-//		static int fwd = 0;
-//		if(Clock_GetMsLast() < 10000 && Clock_GetMsLast() - lllsl >= 250)
-//		{
-//			if(fwd)
-//			{
-//				fwd = 0;
-//				pi_pos.setPoint += 90.0f;
-//			}
-//			else
-//			{
-//				fwd = 1;
-//				pi_pos.setPoint -= 90.0f;
-//			}
-//
-//			pi_pos.setPoint += 45.0f;
-//
-//			lllsl = Clock_GetMsLast();
-//		}
 
-#endif
+		//Signal monitor
+		///////////////////////////////////////////////////////////
+		if((Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT) ||
+		   (Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT))
+		{
+			Signal_ClearMotorState(MOTOR_MODE_ENABLE);
+			System_WritePin(GPIOB, GPIO_DIS_PIN, 1);
+		}
+		else
+		{
+			if(Signal_GetMotorState() & MOTOR_MODE_ENABLE)
+				System_WritePin(GPIOB, GPIO_DIS_PIN, 0);
+			else
+				System_WritePin(GPIOB, GPIO_DIS_PIN, 1);
+		}
 
-#ifdef SPD_CONTROL
-		pi_speed.setPoint = Signal_GetMotorPos()/4.0f;
-#endif
-//		pi_pos.setPoint = Clock_GetTimeS()
+		if(m_fSpeed < 0)
+			Signal_SetMotorState(MOTOR_MODE_REVERSING);
+		else
+			Signal_ClearMotorState(MOTOR_MODE_REVERSING);
+
+		///////////////////////////////////////////////////////////
 
 
 //		pi_speed.kP = Signal_GetMotorPosKp()/10.0f;

@@ -6,7 +6,7 @@ void PID_Initialize(PID_Controller * _PID)
 	// Init all values to zero
 	_PID->sampleError 		= 0.0f;
 	_PID->deltaInput 		= 0.0f;
-	_PID->lastInput 		= 0.0f;
+	_PID->lastError 		= 0.0f;
 	_PID->PTerm 			= 0.0f;
 	_PID->ITerm 			= 0.0f;
 	_PID->DTerm 			= 0.0f;
@@ -23,16 +23,17 @@ float PID_Update(PID_Controller * _PID, float systemFeedback)
 
 	// Compute diff from last error
 	if(_PID->kD > 0.0f)
-		_PID->deltaInput = systemFeedback - _PID->lastInput;
+		_PID->deltaInput = _PID->lastError - _PID->sampleError;
 
 	// Remember last error value
-	_PID->lastInput = systemFeedback;
+	_PID->lastError = _PID->sampleError;
 
 	// Calculate terms
 	_PID->PTerm =  _PID->kP * _PID->sampleError;
 	new_i =  _PID->ITerm + (_PID->kI * _PID->deltaTime * _PID->sampleError);
+
 	if(_PID->kD > 0.0f)
-		_PID->DTerm = -_PID->kD * _PID->deltaInput / _PID->deltaTime;
+		_PID->DTerm = _PID->kD * (_PID->deltaInput / _PID->deltaTime);
 
 	// Sum terms into controller output
 	_PID->controllerOutput = _PID->PTerm + new_i + _PID->DTerm;
@@ -87,7 +88,7 @@ float PID_GetSetpoint(PID_Controller * _PID)
 
 float PID_GetLastInput(PID_Controller * _PID)
 {
-	return _PID->lastInput;
+	return _PID->lastError;
 }
 
 void PID_SetKp(PID_Controller * _PID, float proportional_gain)
@@ -109,7 +110,7 @@ void PID_Reset(PID_Controller * _PID)
 {
 	_PID->sampleError 		= 0.0f;
 	_PID->deltaInput 		= 0.0f;
-	_PID->lastInput 		= 0.0f;
+	_PID->lastError 		= 0.0f;
 	_PID->controllerOutput 	= 0.0f;
 	_PID->updates 			= 0;
 	_PID->PTerm 			= 0.0f;

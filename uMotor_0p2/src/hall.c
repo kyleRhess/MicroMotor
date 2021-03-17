@@ -28,6 +28,14 @@ static void hall_monitor(uint8_t hall_num, int state)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
+	if(Signal_GetMotorState() & MOTOR_MODE_HOMING)
+	{
+//		Signal_ClearMotorState(MOTOR_MODE_ENABLE);
+		Encoder_Reset();
+		Signal_SetMotorPos(0.0f);
+		FOC_Init();
+		Signal_ClearMotorState(MOTOR_MODE_HOMING);
+	}
 #if 0
 	HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 //	switch (GPIO_Pin)

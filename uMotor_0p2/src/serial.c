@@ -44,28 +44,39 @@ static uint32_t proc_command(uint32_t command)
 		case CMD_MOTOR_RESET:
 			rc = command;
 			Encoder_Reset();
-			Signal_SetMotorPWM(0.0f);
-			Signal_SetMotorState(MOTOR_MODE_DISABLE);
+			FOC_Init();
+			Signal_SetMotorPos(0.0f);
+			Signal_ClearMotorState(MOTOR_MODE_ENABLE);
+			Signal_ClearMotorState(MOTOR_MODE_OVERCURRENT);
+			Signal_ClearMotorState(MOTOR_MODE_OVERSPEED);
 			break;
 		case CMD_MOTOR_QUERY:
 			rc = command;
 			txCmdData.pwmValue 		= pi_pos.setPoint;//Hall_GetRPM();// Signal_GetMotorPWM();
-			txCmdData.driveMode 	= Signal_GetMotorMode();
+			txCmdData.driveMode 	= Signal_GetMotorState();
 			txCmdData.rpmValue 		= m_fMechAngle / 4.0f;//pi_pos.lastInput;//Hall_GetRPM();
 			txCmdData.encoderCnt 	= Clock_GetUsLast();
 			break;
 		case CMD_MOTOR_ENABLE:
 			rc = command;
-			Signal_SetMotorState(MOTOR_MODE_ENABLE);
+			if(!(Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT) &&
+			   !(Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT))
+			{
+				Signal_SetMotorState(MOTOR_MODE_ENABLE);
+			}
 			break;
 		case CMD_MOTOR_DISABLE:
 			rc = command;
-			Signal_SetMotorState(MOTOR_MODE_DISABLE);
+			Signal_ClearMotorState(MOTOR_MODE_ENABLE);
 			break;
 		case CMD_MOTOR_PWM:
 			rc = command;
 			memcpy(&rxCmdData, &uartRxBuff[1+4], sizeof(rxCmdData));
 			Signal_SetMotorPWM(rxCmdData.pwmValue);
+			break;
+		case CMD_MOTOR_HOME:
+			rc = command;
+			Signal_SetMotorState(MOTOR_MODE_HOMING);
 			break;
 		case CMD_MOTOR_POSITION:
 			rc = command;
@@ -81,7 +92,6 @@ static uint32_t proc_command(uint32_t command)
 		default:
 			break;
 	}
-
 	return rc;
 }
 
@@ -247,17 +257,17 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
 
 void USART1_IRQHandler(void)
 {
-  HAL_UART_IRQHandler(&s_UARTHandle);
+	HAL_UART_IRQHandler(&s_UARTHandle);
 }
 
 void DMA2_Stream2_IRQHandler(void)
 {
-  HAL_DMA_IRQHandler(&hdma_usart1_rx);
+	HAL_DMA_IRQHandler(&hdma_usart1_rx);
 }
 
 void DMA2_Stream7_IRQHandler(void)
 {
-  HAL_DMA_IRQHandler(&hdma_usart1_tx);
+	HAL_DMA_IRQHandler(&hdma_usart1_tx);
 }
 
 /**
@@ -268,9 +278,9 @@ void DMA2_Stream7_IRQHandler(void)
 */
 void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 {
-	  GPIO_InitTypeDef GPIO_InitStruct = {0};
-	  if(huart->Instance==USART1)
-	  {
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+	if(huart->Instance==USART1)
+	{
 	  /* USER CODE BEGIN USART1_MspInit 0 */
 
 	  /* USER CODE END USART1_MspInit 0 */
@@ -333,7 +343,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 		HAL_NVIC_SetPriority(USART1_IRQn, 1, 1);
 		HAL_NVIC_EnableIRQ(USART1_IRQn);
 		/* USER CODE END USART1_MspInit 1 */
-	  }
+	}
 }
 
 /**

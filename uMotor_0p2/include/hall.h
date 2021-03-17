@@ -3,11 +3,6 @@
 
 #include "system.h"
 
-//#define BI_POLAR
-#ifndef BI_POLAR
-#define UNI_POLAR
-#endif
-
 // Hall sensor states
 #define HALL_A			0
 #define HALL_B			1

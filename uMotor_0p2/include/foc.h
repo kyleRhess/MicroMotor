@@ -32,9 +32,9 @@
 
 extern float m_fRotorThetaInit;
 extern float m_fMechAngle;
-extern float m_fMechAngleOffset;
 extern float m_fCurrentA;
 extern float m_fCurrentB;
+extern float m_fCurrentC;
 extern float m_fId;
 extern float m_fIq;
 extern float m_fSpeed;

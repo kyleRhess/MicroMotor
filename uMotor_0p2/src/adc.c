@@ -61,24 +61,35 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 #define FILT_K		0.90f
 #ifdef FILT_K
 #define FILT_K_1	(1 - FILT_K)
-	g_ADCValue1 = g_ADCBuffer[2];
-	g_ADCValue2 = g_ADCValue2*FILT_K_1 + ((float)g_ADCBuffer[0])*FILT_K;
-	g_ADCValue3 = g_ADCValue3*FILT_K_1 + ((float)g_ADCBuffer[1])*FILT_K;
+	// Initial state needs to be set
+	if(g_ADCValue1 == 0 && g_ADCValue2 == 0 && g_ADCValue3 == 0)
+	{
+		g_ADCValue1 = g_ADCBuffer[2];
+		g_ADCValue2 = (float)g_ADCBuffer[0];
+		g_ADCValue3 = (float)g_ADCBuffer[1];
+	}
+	else
+	{
+		g_ADCValue1 = g_ADCBuffer[2];
+		g_ADCValue2 = g_ADCValue2*FILT_K_1 + ((float)g_ADCBuffer[0])*FILT_K;
+		g_ADCValue3 = g_ADCValue3*FILT_K_1 + ((float)g_ADCBuffer[1])*FILT_K;
+	}
 #else
+	g_ADCValue1 = g_ADCBuffer[2];
 	g_ADCValue2 = (float)g_ADCBuffer[1];
 	g_ADCValue3 = (float)g_ADCBuffer[2];
 #endif
 
 	m_fCurrentA = ((((float)g_ADCValue3 * ADC_SCALE) - ADC_ZERO) * ADC_RES);
 	m_fCurrentB = ((((float)g_ADCValue2 * ADC_SCALE) - ADC_ZERO) * ADC_RES);
+	m_fCurrentC = -m_fCurrentA - m_fCurrentB;
 
 	// EMRG stop if current gets too high
-	if(m_fCurrentA > MAX_CURRENT || m_fCurrentB > MAX_CURRENT || m_fCurrentA < -MAX_CURRENT || m_fCurrentB < -MAX_CURRENT )
+	if(m_fCurrentA > MAX_CURRENT || m_fCurrentA < -MAX_CURRENT ||
+	   m_fCurrentB > MAX_CURRENT || m_fCurrentB < -MAX_CURRENT ||
+	   m_fCurrentC > MAX_CURRENT || m_fCurrentC < -MAX_CURRENT)
 	{
-		while(1)
-		{
-			Signal_SetMotorState(MOTOR_MODE_DISABLE);
-		}
+		Signal_SetMotorState(MOTOR_MODE_OVERCURRENT);
 	}
 
 	Run_SVM();

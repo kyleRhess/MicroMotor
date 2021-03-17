@@ -2,6 +2,13 @@
 #include "foc.h"
 #include "signal.h"
 
+#define Q_WIND		1.0f
+#define D_WIND		1.0f
+#define SPEED_WIND	2.8f	// amps
+#define POS_WIND	8000.0f // deg/s
+#define Kp			0.055f
+#define Ki			8.74399996f
+
 // =====================================
 // Space Vector Modulation variables
 // =====================================
@@ -51,9 +58,9 @@ static int c_state 					= 0;
 
 float m_fRotorThetaInit 			= 0;
 float m_fMechAngle					= 0.0f;
-float m_fMechAngleOffset			= 0.0f;
 float m_fCurrentA 					= 0.0f;
 float m_fCurrentB 					= 0.0f;
+float m_fCurrentC 					= 0.0f;
 float m_fId 						= 0;
 float m_fIq 						= 0;
 float m_fSpeed						= 0;
@@ -74,6 +81,7 @@ typedef struct FloatField
 	float		posReq;			// 6
 	float		currentA;		// 7
 	float		currentB;		// 8
+	float		currentC;		// 8
 	float		angle;			// 9
 } __attribute__((__packed__)) FloatField;
 static uint8_t uartTxBuff[64];
@@ -86,12 +94,46 @@ static float cos_fast(float x);
 
 void FOC_Init(void)
 {
-#define Q_WIND		1.0f
-#define D_WIND		1.0f
-#define SPEED_WIND	2.8f	// amps
-#define POS_WIND	8000.0f // deg/s
-#define Kp			0.055f
-#define Ki			8.74399996f
+	sector_S 				= 255;
+	N 						= 255;
+	T0						= 0;
+	T1						= 0;
+	T2						= 0;
+	Ta						= 0;
+	Tb						= 0;
+	Tc						= 0;
+	m_i 					= 0;
+	m_j 					= 0;
+	m_k 					= 0;
+	#ifdef SINE_MODULATION
+	v_a 					= 0;
+	v_b 					= 0;
+	v_c 					= 0;
+	#endif
+	m_fLastTimeMs 			= 0;
+	m_fDeltaT 				= 0;
+	m_fMechAngleLast		= 0.0f;
+	i_a						= 0;
+	i_b						= 0;
+	i_c						= 0;
+	i_alpha 				= 0;
+	i_beta 					= 0;
+	v_d 					= 0;
+	v_q 					= 0;
+	v_alpha 				= 0;
+	v_beta 					= 0;
+	a_state 				= 0;
+	b_state 				= 0;
+	c_state 				= 0;
+	m_fRotorThetaInit 		= 0;
+	m_fMechAngle			= 0.0f;
+	m_fCurrentA 			= 0.0f;
+	m_fCurrentB 			= 0.0f;
+	m_fCurrentC 			= 0.0f;
+	m_fId 					= 0;
+	m_fIq 					= 0;
+	m_fSpeed				= 0;
+	m_fRotorTheta			= 0.0f;
 
 	pi_axis_d.kP			= Kp;
 	pi_axis_d.kI 			= Ki;
@@ -111,9 +153,9 @@ void FOC_Init(void)
 	pi_speed.setPoint 		= 0.0f;
 	pi_speed.deltaTime 		= (1.0f / 2000.0f);
 
-	pi_pos.kP 				= 24.0f;
+	pi_pos.kP 				= 21.0f;
 	pi_pos.kI 				= 0.0f;
-	pi_pos.kD 				= 0.000005f;
+	pi_pos.kD 				= 0.0f;
 	pi_pos.setPoint 		= 0.0f;
 	pi_pos.deltaTime 		= (1.0f / 2000.0f);
 
@@ -180,8 +222,9 @@ void Run_SVM(void)
 		div = 0;
 
 		txCmdData.angle 		= m_fRotorTheta;
-		txCmdData.m_fCurrentA 		= m_fCurrentA;
-		txCmdData.m_fCurrentB 		= m_fCurrentB;
+		txCmdData.m_fCurrentA 	= m_fCurrentA;
+		txCmdData.m_fCurrentB 	= m_fCurrentB;
+		txCmdData.m_fCurrentC 	= m_fCurrentC;
 		txCmdData.posReq 		= pi_pos.setPoint;
 		txCmdData.posValue		= pi_pos.lastInput;
 		txCmdData.speedReq 		= pi_speed.setPoint;
@@ -217,26 +260,52 @@ void Run_SVM(void)
 	}
 #endif
 
-	// Don't run if motor is disabled
-	if(Signal_GetMotorState() & MOTOR_MODE_DISABLE)
-	{
-		PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_1, 0.5f);
-		PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_2, 0.5f);
-		PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_3, 0.5f);
-		return;
-	}
-
 	// Get rotor angle
 	m_fMechAngle 	 = -((float)Encoder_GetAngle() * 4.0f);
 
 	// Convert rotor angle to electrical angle
-	m_fRotorTheta  = m_fRotorThetaInit + (m_fMechAngle - m_fMechAngleOffset) - 90.0f;
+	m_fRotorTheta  = m_fRotorThetaInit + (m_fMechAngle) - 90.0f;
 
-	// TESTING
-	if(Clock_GetMsLast() > 10*1000)
-		pi_pos.setPoint 	= Signal_GetMotorPos()*0.15f;
+
+	static uint32_t elaps = 0;
+	// Don't run controllers if motor is disabled
+	if(!(Signal_GetMotorState() & MOTOR_MODE_ENABLE))
+	{
+		PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_1, 0.5f);
+		PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_2, 0.5f);
+		PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_3, 0.5f);
+		elaps = Clock_GetMs();
+		return;
+	}
 	else
-		pi_pos.setPoint		= ((float)Clock_GetMs()/1000.0f) * Signal_GetMotorPos()/240.0f;
+	{
+		static uint32_t lllsl = 0;
+		static int fwd = 0;
+		if(Clock_GetMsLast() < 10000 && Clock_GetMsLast() - lllsl >= 500)
+		{
+			if(fwd)
+			{
+				fwd = 0;
+				pi_pos.setPoint -= 360.0f;
+			}
+			else
+			{
+				fwd = 1;
+				pi_pos.setPoint += 360.0f;
+			}
+
+			lllsl = Clock_GetMsLast();
+		}
+		else
+		{
+			// TESTING
+			if(Signal_GetMotorState() & MOTOR_MODE_HOMING)
+				pi_pos.setPoint	+= (((float)Clock_GetMs() - elaps)/1000.0f) * 20.0f;
+			else
+				pi_pos.setPoint += (((float)Clock_GetMs() - elaps)/1000.0f) * (Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/200.0f;
+		}
+	}
+	elaps = Clock_GetMs();
 
 #ifdef POS_CONTROL
 	pi_speed.setPoint 	= PID_Update(&pi_pos, m_fMechAngle/4.0f);
@@ -254,7 +323,7 @@ void Run_SVM(void)
 	// Phase currents
 	i_a 			= m_fCurrentA; // measured value
 	i_b 			= m_fCurrentB; // measured value
-	i_c 			= -i_a - i_b;
+	i_c 			= m_fCurrentC;
 
 	// Forward Clarke
 	i_alpha 		= i_a;

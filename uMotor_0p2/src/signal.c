@@ -1,14 +1,13 @@
 
 #include "signal.h"
 
-static int signal_currentEnableState 	= MOTOR_MODE_DISABLE;
-static int signal_driveDirection		= MOTOR_MODE_FORWARD;
+//static int signal_currentEnableState 	= MOTOR_MODE_DISABLE;
 static float signal_currentPwmValue		= 0.0f;
 static float signal_currentPosition		= 0.0f;
 static float signal_PositionKp			= 0.0f;
 static float signal_PositionKi			= 0.0f;
 
-static uint32_t signal_DriveState		= MOTOR_MODE_DISABLE;
+static uint32_t signal_DriveState		= MOTOR_MODE_DEFAULT;
 
 
 void Signal_Init(void)
@@ -25,21 +24,22 @@ void Signal_Init(void)
 	System_WritePin(GPIOB, GPIO_DIS_PIN, GPIO_PIN_SET);
 }
 
-void Signal_SetMotorState(int state)
+void Signal_SetMotorState(uint32_t state)
 {
-	if(state == MOTOR_MODE_ENABLE)
-		System_WritePin(GPIOB, GPIO_DIS_PIN, 0);
-	else
-		System_WritePin(GPIOB, GPIO_DIS_PIN, 1);
-
-	signal_currentEnableState = state;
-
 	signal_DriveState |= state;
 }
 
-int Signal_GetMotorState()
+void Signal_ClearMotorState(uint32_t state)
 {
-	return signal_currentEnableState;
+	signal_DriveState &= ~state;
+
+	if(!(signal_DriveState & MOTOR_MODE_ENABLE))
+		System_WritePin(GPIOB, GPIO_DIS_PIN, 1);
+}
+
+uint32_t Signal_GetMotorState()
+{
+	return signal_DriveState;
 }
 
 void Signal_SetMotorPWM(float speed)
@@ -53,10 +53,6 @@ void Signal_SetMotorPWM(float speed)
 #ifdef BI_POLAR
 	PWM_adjust_DutyCycle(((signal_currentPwmValue*0.5f) + 50.0f));
 #else
-	if(signal_currentPwmValue < 0.0f)
-		Signal_SetDirection(MOTOR_MODE_BAKWARD);
-	else
-		Signal_SetDirection(MOTOR_MODE_FORWARD);
 
 	//PWM_adjust_DutyCycle(fabsf(signal_currentPwmValue));
 #endif
@@ -95,24 +91,4 @@ float Signal_GetMotorPosKp()
 float Signal_GetMotorPosKi()
 {
 	return signal_PositionKi;
-}
-
-uint32_t Signal_GetMotorMode()
-{
-	uint32_t rc = 0;
-
-	rc |= signal_currentEnableState;
-	rc |= signal_driveDirection;
-#ifdef BI_POLAR
-	rc |= MOTOR_MODE_BIPOLAR;
-#else
-	rc |= MOTOR_MODE_UNIPOLAR;
-#endif
-
-	return rc;
-}
-
-void Signal_SetDirection(int dir)
-{
-	signal_driveDirection = dir;
 }
