@@ -88,6 +88,13 @@ int main(int argc, char* argv[])
 	Encoder_Init();
 	Encoder_ZInit();
 
+	GPIO_InitTypeDef gPins;
+	gPins.Pin 		= GPIO_PIN_12;
+	gPins.Mode 		= GPIO_MODE_OUTPUT_PP;
+	gPins.Pull 		= GPIO_PULLUP;
+	gPins.Speed 	= GPIO_SPEED_HIGH;
+	HAL_GPIO_Init(GPIOB, &gPins);
+
 	// Setup hall sensor inputs from BLDC motor
 	Hall_InputInit();
 

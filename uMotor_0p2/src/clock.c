@@ -109,6 +109,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	if(timerDivisor >= SVM_DIVISOR)
 	{
 		timerDivisor 	= 0;
+
+		System_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+
 		hadc1.Instance->CR2 |= ADC_CR2_SWSTART;
 	}
 

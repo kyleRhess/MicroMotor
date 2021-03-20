@@ -40,6 +40,13 @@ extern float m_fIq;
 extern float m_fSpeed;
 extern float m_fRotorTheta;
 
+extern float rotor_theta_init_L;
+extern int reversing;
+extern int a_state;
+extern int b_state;
+extern int c_state;
+extern float mechAngleoffset;
+
 extern PID_Controller pi_axis_d;
 extern PID_Controller pi_axis_q;
 extern PID_Controller pi_speed;

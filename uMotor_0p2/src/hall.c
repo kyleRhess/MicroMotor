@@ -28,6 +28,8 @@ static void hall_monitor(uint8_t hall_num, int state)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
+	HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+
 	if(Signal_GetMotorState() & MOTOR_MODE_HOMING)
 	{
 //		Signal_ClearMotorState(MOTOR_MODE_ENABLE);
@@ -36,8 +38,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		FOC_Init();
 		Signal_ClearMotorState(MOTOR_MODE_HOMING);
 	}
-#if 0
-	HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+#if 1
 //	switch (GPIO_Pin)
 //	{
 //		case HALL_A_PIN:
@@ -63,37 +64,37 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 	if(a_state == 1 && b_state == 0 && c_state == 0)
 	{
-		rotor_theta_init = 0.0f;
+		m_fRotorThetaInit = 0.0f;
 	}
 	else if(a_state == 1 && b_state == 1 && c_state == 0)
 	{
-		rotor_theta_init = 60.0f;
+		m_fRotorThetaInit = 60.0f;
 	}
 	else if(a_state == 0 && b_state == 1 && c_state == 0)
 	{
-		rotor_theta_init = 120.0f;
+		m_fRotorThetaInit = 120.0f;
 	}
 	else if(a_state == 0 && b_state == 1 && c_state == 1)
 	{
-		rotor_theta_init = 180.0f;
+		m_fRotorThetaInit = 180.0f;
 	}
 	else if(a_state == 0 && b_state == 0 && c_state == 1)
 	{
-		rotor_theta_init = 240.0f;
+		m_fRotorThetaInit = 240.0f;
 	}
 	else if(a_state == 1 && b_state == 0 && c_state == 1)
 	{
-		rotor_theta_init = 300.0f;
+		m_fRotorThetaInit = 300.0f;
 	}
 
-	if((rotor_theta_init_L - rotor_theta_init) == 60 || (rotor_theta_init_L - rotor_theta_init) == -300)
+	if((rotor_theta_init_L - m_fRotorThetaInit) == 60 || (rotor_theta_init_L - m_fRotorThetaInit) == -300)
 		reversing = 1;
 	else
 		reversing = 0;
 
-	rotor_theta_init_L = rotor_theta_init;
+	rotor_theta_init_L = m_fRotorThetaInit;
 
-	mechAngleoffset = -((float)(int32_t)Encoder_GetCounts() * 0.06f);
+	mechAngleoffset = -((float)Encoder_GetAngle() * 4.0f);
 
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 #endif
@@ -108,7 +109,7 @@ void Hall_InputInit(void)
 	gAPin.Speed 	= GPIO_SPEED_LOW;
 //	HAL_GPIO_Init(HALL_PORT, &gAPin);
 	/* EXTI interrupt init*/
-#if 0
+#if 1
 	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 1);
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 #endif

@@ -8,6 +8,7 @@
 #define POS_WIND	8000.0f // deg/s
 #define Kp			0.055f
 #define Ki			8.74399996f
+#define PID_FREQ	2000.0f
 
 // =====================================
 // Space Vector Modulation variables
@@ -48,9 +49,6 @@ static float v_d 					= 0;
 static float v_q 					= 0;
 static float v_alpha 				= 0;
 static float v_beta 				= 0;
-static int a_state 					= 0;
-static int b_state 					= 0;
-static int c_state 					= 0;
 
 // =====================================
 // EXTERNS
@@ -65,6 +63,13 @@ float m_fId 						= 0;
 float m_fIq 						= 0;
 float m_fSpeed						= 0;
 float m_fRotorTheta					= 0.0f;
+
+float rotor_theta_init_L 			= 0;
+int reversing 						= 0;
+int a_state 						= 0;
+int b_state 						= 0;
+int c_state 						= 0;
+float mechAngleoffset				= 0.0f;
 
 PID_Controller pi_axis_d;
 PID_Controller pi_axis_q;
@@ -139,25 +144,25 @@ void FOC_Init(void)
 	pi_axis_d.kI 			= Ki;
 	pi_axis_d.kD 			= 0.0f;
 	pi_axis_d.setPoint 		= 0.0f;
-	pi_axis_d.deltaTime 	= (1.0f / 2000.0f);
+	pi_axis_d.deltaTime 	= (1.0f / PID_FREQ);
 
 	pi_axis_q.kP 			= Kp;
 	pi_axis_q.kI 			= Ki;
 	pi_axis_q.kD 			= 0.0f;
 	pi_axis_q.setPoint 		= 0.0f;
-	pi_axis_q.deltaTime 	= (1.0f / 2000.0f);
+	pi_axis_q.deltaTime 	= (1.0f / PID_FREQ);
 
 	pi_speed.kP 			= 0.008512000013f;
 	pi_speed.kI 			= 0.04739300018f;
 	pi_speed.kD 			= 0.0f;
 	pi_speed.setPoint 		= 0.0f;
-	pi_speed.deltaTime 		= (1.0f / 2000.0f);
+	pi_speed.deltaTime 		= (1.0f / PID_FREQ);
 
 	pi_pos.kP 				= 21.0f;
 	pi_pos.kI 				= 0.0f;
 	pi_pos.kD 				= 0.0f;
 	pi_pos.setPoint 		= 0.0f;
-	pi_pos.deltaTime 		= (1.0f / 2000.0f);
+	pi_pos.deltaTime 		= (1.0f / PID_FREQ);
 
 	PID_Initialize(&pi_axis_d);
 	PID_Initialize(&pi_axis_q);
@@ -173,43 +178,42 @@ void FOC_Init(void)
 	pi_pos.windupMax 		= POS_WIND;
 	pi_pos.windupMin 		= -POS_WIND;
 
-	if(sector_S == 255)
-	{
-		a_state = READ_H(HALL_A_PIN) && HALL_A_PIN;
-		b_state = READ_H(HALL_B_PIN) && HALL_B_PIN;
-		c_state = READ_H(HALL_C_PIN) && HALL_C_PIN;
+	a_state = READ_H(HALL_A_PIN) && HALL_A_PIN;
+	b_state = READ_H(HALL_B_PIN) && HALL_B_PIN;
+	c_state = READ_H(HALL_C_PIN) && HALL_C_PIN;
 
-		if(a_state == 1 && b_state == 0 && c_state == 0)
-		{
-			sector_S = 1;
-			m_fRotorThetaInit = 0.0f;
-		}
-		else if(a_state == 1 && b_state == 1 && c_state == 0)
-		{
-			sector_S = 2;
-			m_fRotorThetaInit = 60.0f;
-		}
-		else if(a_state == 0 && b_state == 1 && c_state == 0)
-		{
-			sector_S = 3;
-			m_fRotorThetaInit = 120.0f;
-		}
-		else if(a_state == 0 && b_state == 1 && c_state == 1)
-		{
-			sector_S = 4;
-			m_fRotorThetaInit = 180.0f;
-		}
-		else if(a_state == 0 && b_state == 0 && c_state == 1)
-		{
-			sector_S = 5;
-			m_fRotorThetaInit = 240.0f;
-		}
-		else if(a_state == 1 && b_state == 0 && c_state == 1)
-		{
-			sector_S = 6;
-			m_fRotorThetaInit = 300.0f;
-		}
+	if(a_state == 1 && b_state == 0 && c_state == 0)
+	{
+		sector_S = 1;
+		m_fRotorThetaInit = 0.0f;
 	}
+	else if(a_state == 1 && b_state == 1 && c_state == 0)
+	{
+		sector_S = 2;
+		m_fRotorThetaInit = 60.0f;
+	}
+	else if(a_state == 0 && b_state == 1 && c_state == 0)
+	{
+		sector_S = 3;
+		m_fRotorThetaInit = 120.0f;
+	}
+	else if(a_state == 0 && b_state == 1 && c_state == 1)
+	{
+		sector_S = 4;
+		m_fRotorThetaInit = 180.0f;
+	}
+	else if(a_state == 0 && b_state == 0 && c_state == 1)
+	{
+		sector_S = 5;
+		m_fRotorThetaInit = 240.0f;
+	}
+	else if(a_state == 1 && b_state == 0 && c_state == 1)
+	{
+		sector_S = 6;
+		m_fRotorThetaInit = 300.0f;
+	}
+
+	rotor_theta_init_L = m_fRotorThetaInit;
 }
 
 void Run_SVM(void)
@@ -261,20 +265,22 @@ void Run_SVM(void)
 #endif
 
 	// Get rotor angle
-	m_fMechAngle 	 = -((float)Encoder_GetAngle() * 4.0f);
+	m_fMechAngle		= -((float)Encoder_GetAngle() * 4.0f);
 
 	// Convert rotor angle to electrical angle
-	m_fRotorTheta  = m_fRotorThetaInit + (m_fMechAngle) - 90.0f;
+	if(reversing)
+		m_fRotorTheta  	= m_fRotorThetaInit + (m_fMechAngle - mechAngleoffset) - 30.0f;
+	else
+		m_fRotorTheta  	= m_fRotorThetaInit + (m_fMechAngle - mechAngleoffset) - 90.0f;
 
-
-	static uint32_t elaps = 0;
+	static float elaps = 0;
 	// Don't run controllers if motor is disabled
 	if(!(Signal_GetMotorState() & MOTOR_MODE_ENABLE))
 	{
 		PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_1, 0.5f);
 		PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_2, 0.5f);
 		PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_3, 0.5f);
-		elaps = Clock_GetMs();
+		elaps = Clock_GetTimeS();
 		return;
 	}
 	else
@@ -300,21 +306,26 @@ void Run_SVM(void)
 		{
 			// TESTING
 			if(Signal_GetMotorState() & MOTOR_MODE_HOMING)
-				pi_pos.setPoint	+= (((float)Clock_GetMs() - elaps)/1000.0f) * 20.0f;
-			else
-				pi_pos.setPoint += (((float)Clock_GetMs() - elaps)/1000.0f) * (Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/200.0f;
+				pi_pos.setPoint	+= (Clock_GetTimeS() - elaps) * 20.0f;
+			else if(Signal_GetMotorState() & MOTOR_MODE_SPEED)
+			{
+				pi_pos.setPoint += (Clock_GetTimeS() - elaps) * (Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/125.0f;
+			}
+			else if(Signal_GetMotorState() & MOTOR_MODE_POSITION)
+				pi_pos.setPoint = Signal_GetMotorPos()/1000.0f;
 		}
 	}
-	elaps = Clock_GetMs();
+	elaps = Clock_GetTimeS();
 
-#ifdef POS_CONTROL
-	pi_speed.setPoint 	= PID_Update(&pi_pos, m_fMechAngle/4.0f);
-	pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
-#endif
-
-#ifdef SPD_CONTROL
-	pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
-#endif
+//	if(Signal_GetMotorState() & MOTOR_MODE_POSITION)
+//	{
+		pi_speed.setPoint 	= PID_Update(&pi_pos, m_fMechAngle/4.0f);
+		pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
+//	}
+//	else if(Signal_GetMotorState() & MOTOR_MODE_SPEED)
+//	{
+//		pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
+//	}
 
 #ifdef TRQ_CONTROL
 	pi_axis_q.setPoint 	= Signal_GetMotorPos()/10000.0f;
@@ -465,6 +476,8 @@ void Run_SVM(void)
 	PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_1, Ta);
 	PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_2, Tb);
 	PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_3, Tc);
+
+	System_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
 #endif
 }
 

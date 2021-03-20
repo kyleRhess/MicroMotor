@@ -44,6 +44,8 @@ uint32_t Signal_GetMotorState()
 
 void Signal_SetMotorPWM(float speed)
 {
+	Signal_SetMotorState(MOTOR_MODE_SPEED);
+	Signal_ClearMotorState(MOTOR_MODE_POSITION);
 	signal_currentPwmValue = speed;
 
 	if(signal_currentPwmValue < -100.0f)
@@ -60,6 +62,9 @@ void Signal_SetMotorPWM(float speed)
 
 void Signal_SetMotorPos(float position)
 {
+	Signal_SetMotorState(MOTOR_MODE_POSITION);
+	Signal_ClearMotorState(MOTOR_MODE_SPEED);
+
 	signal_currentPosition = position;
 }
 
