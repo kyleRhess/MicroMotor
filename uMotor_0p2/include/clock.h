@@ -4,8 +4,6 @@
 #include "system.h"
 #include "stm32f4xx.h"
 
-#define CLOCK_FREQ		25000
-
 #define LOOPF			(PWM_F * 2)/1000
 #define TIME_ELAP_US	1000000/(PWM_F * 2)
 #define TIME_ELAP_MS	1000/(PWM_F * 2)
@@ -29,7 +27,6 @@ typedef struct ClockTimerus
 } ClockTimerus;
 
 
-float Clock_GetTimeS(void);
 uint32_t Clock_GetMs(void);
 uint32_t Clock_GetMsLast(void);
 uint32_t Clock_GetUs(void);
@@ -38,6 +35,5 @@ void Clock_StartTimer(ClockTimer *ct, uint32_t periodMs);
 void Clock_StartTimerUs(ClockTimerus *ct, uint32_t periodUs);
 int Clock_UpdateTimer(ClockTimer *ct);
 int Clock_UpdateTimerUs(ClockTimerus *ct);
-int Clock_InitSamplingTimer(void);
 
 #endif /* CLOCK_H_ */

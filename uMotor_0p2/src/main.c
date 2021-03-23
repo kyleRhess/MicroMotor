@@ -88,12 +88,15 @@ int main(int argc, char* argv[])
 	Encoder_Init();
 	Encoder_ZInit();
 
+#ifdef DEBUG_PIN
+	// Testing GPIO pin only
 	GPIO_InitTypeDef gPins;
 	gPins.Pin 		= GPIO_PIN_12;
 	gPins.Mode 		= GPIO_MODE_OUTPUT_PP;
 	gPins.Pull 		= GPIO_PULLUP;
 	gPins.Speed 	= GPIO_SPEED_HIGH;
 	HAL_GPIO_Init(GPIOB, &gPins);
+#endif
 
 	// Setup hall sensor inputs from BLDC motor
 	Hall_InputInit();
@@ -121,7 +124,6 @@ int main(int argc, char* argv[])
 
 	while (1)
 	{
-
 		//Signal monitor
 		///////////////////////////////////////////////////////////
 		if((Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT) ||
@@ -206,7 +208,7 @@ static void MX_DMA_Init(void)
 
 void TIM1_UP_IRQHandler(void)
 {
-  HAL_TIM_IRQHandler(&htim1);
+	HAL_TIM_IRQHandler(&htim1);
 }
 
 /*

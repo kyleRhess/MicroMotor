@@ -33,8 +33,10 @@ static float v_c 					= 0;
 // =====================================
 // Estimator variables
 // =====================================
-static float m_fLastTimeMs 			= 0;
-static float m_fDeltaT 				= 0;
+static float m_fLastTimeUs 			= 0;
+static float m_fLastTimeUsSpeed 	= 0;
+static float m_fDeltaTSpeed 		= 0;
+static float m_fDeltaT		 		= 0;
 static float m_fMechAngleLast		= 0.0f;
 
 // =====================================
@@ -115,7 +117,9 @@ void FOC_Init(void)
 	v_b 					= 0;
 	v_c 					= 0;
 	#endif
-	m_fLastTimeMs 			= 0;
+	m_fLastTimeUs 			= 0;
+	m_fLastTimeUsSpeed 		= 0;
+	m_fDeltaTSpeed 			= 0;
 	m_fDeltaT 				= 0;
 	m_fMechAngleLast		= 0.0f;
 	i_a						= 0;
@@ -241,18 +245,6 @@ void Run_SVM(void)
 	}
 #endif
 
-	// Get time delta between computations
-	m_fDeltaT = (float)Clock_GetUs() - m_fLastTimeMs;
-	m_fDeltaT /= 1000000.0f;
-
-	// Compute speed at a decimated rate
-	if(m_fDeltaT > 0.001f)
-	{
-		m_fSpeed 			= (((m_fMechAngle - m_fMechAngleLast) / m_fDeltaT))/4.0f;
-		m_fMechAngleLast 	= m_fMechAngle;
-		m_fLastTimeMs 		= (float)Clock_GetUs();
-	}
-
 #if 0
 	// Check for motor over-speed
 	if(DPS_TO_RPM(fabsf(m_fSpeed)) > MAX_SPEED)
@@ -264,6 +256,21 @@ void Run_SVM(void)
 	}
 #endif
 
+	// Get time delta between computations (deal with wrap-around)
+	if(m_fLastTimeUsSpeed > Clock_GetUs())
+		m_fDeltaTSpeed = (float)UINT32_MAX - m_fLastTimeUsSpeed;
+	else
+		m_fDeltaTSpeed = (float)Clock_GetUs() - m_fLastTimeUsSpeed;
+	m_fDeltaTSpeed /= 1000000.0f;
+
+	// Compute speed at a decimated rate
+	if(m_fDeltaTSpeed > 0.001f)
+	{
+		m_fSpeed 			= (((m_fMechAngle - m_fMechAngleLast) / m_fDeltaTSpeed))/4.0f;
+		m_fMechAngleLast 	= m_fMechAngle;
+		m_fLastTimeUsSpeed 	= (float)Clock_GetUs();
+	}
+
 	// Get rotor angle
 	m_fMechAngle		= -((float)Encoder_GetAngle() * 4.0f);
 
@@ -273,49 +280,54 @@ void Run_SVM(void)
 	else
 		m_fRotorTheta  	= m_fRotorThetaInit + (m_fMechAngle - mechAngleoffset) - 90.0f;
 
-	static float elaps = 0;
 	// Don't run controllers if motor is disabled
 	if(!(Signal_GetMotorState() & MOTOR_MODE_ENABLE))
 	{
 		PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_1, 0.5f);
 		PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_2, 0.5f);
 		PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_3, 0.5f);
-		elaps = Clock_GetTimeS();
 		return;
 	}
 	else
 	{
 		static uint32_t lllsl = 0;
 		static int fwd = 0;
-		if(Clock_GetMsLast() < 10000 && Clock_GetMsLast() - lllsl >= 500)
+		if(Clock_GetMsLast() < 10000 && Clock_GetMsLast() - lllsl >= 1000)
 		{
-			if(fwd)
-			{
-				fwd = 0;
-				pi_pos.setPoint -= 360.0f;
-			}
-			else
-			{
-				fwd = 1;
-				pi_pos.setPoint += 360.0f;
-			}
+//			if(fwd)
+//			{
+//				fwd = 0;
+//				pi_pos.setPoint -= 360.0f;
+//			}
+//			else
+//			{
+//				fwd = 1;
+//				pi_pos.setPoint += 360.0f;
+//			}
 
+			pi_pos.setPoint = -6.0f * ((float)Clock_GetMsLast()/1000.0f);
 			lllsl = Clock_GetMsLast();
 		}
 		else
 		{
+			if(m_fLastTimeUs > Clock_GetUs())
+				m_fDeltaT = (float)UINT32_MAX - m_fLastTimeUs;
+			else
+				m_fDeltaT = (float)Clock_GetUs() - m_fLastTimeUs;
+			m_fDeltaT /= 1000000.0f;
+			m_fLastTimeUs 	= (float)Clock_GetUs();
+
 			// TESTING
 			if(Signal_GetMotorState() & MOTOR_MODE_HOMING)
-				pi_pos.setPoint	+= (Clock_GetTimeS() - elaps) * 20.0f;
+				pi_pos.setPoint	+= m_fDeltaT * 20.0f;
 			else if(Signal_GetMotorState() & MOTOR_MODE_SPEED)
 			{
-				pi_pos.setPoint += (Clock_GetTimeS() - elaps) * (Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/125.0f;
+				pi_pos.setPoint += m_fDeltaT * (Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/125.0f;
 			}
 			else if(Signal_GetMotorState() & MOTOR_MODE_POSITION)
 				pi_pos.setPoint = Signal_GetMotorPos()/1000.0f;
 		}
 	}
-	elaps = Clock_GetTimeS();
 
 //	if(Signal_GetMotorState() & MOTOR_MODE_POSITION)
 //	{
@@ -476,8 +488,6 @@ void Run_SVM(void)
 	PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_1, Ta);
 	PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_2, Tb);
 	PWM_Set_Duty(&PWMtimer.timer, TIM_CHANNEL_3, Tc);
-
-	System_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
 #endif
 }
 

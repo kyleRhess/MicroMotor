@@ -18,7 +18,7 @@ void Encoder_Init(void)
 	qTimer.Instance 			= TIM5;
 	qTimer.Init.Prescaler 		= 0;
 	qTimer.Init.CounterMode 	= TIM_COUNTERMODE_UP;
-	qTimer.Init.Period 			= 0xFFFFFFFF;
+	qTimer.Init.Period 			= 0xFFFFFFFF;//0x00005DC0; //
 	qTimer.Init.ClockDivision 	= TIM_CLOCKDIVISION_DIV1;
 	sConfig.EncoderMode 		= TIM_ENCODERMODE_TI12;
 	sConfig.IC1Polarity 		= TIM_ICPOLARITY_RISING;
