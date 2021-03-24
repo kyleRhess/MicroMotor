@@ -21,7 +21,7 @@ TIM_HandleTypeDef Initialize_PWM(PWM_Out * PWMType)
 
 	timer_PWM.Instance 					= TIM;
 	timer_PWM.Init.Prescaler 			= PWM_PRESCALE;
-	timer_PWM.Init.CounterMode 			= TIM_COUNTERMODE_CENTERALIGNED2;
+	timer_PWM.Init.CounterMode 			= TIM_COUNTERMODE_CENTERALIGNED1;
 	timer_PWM.Init.Period 				= PWM_PERIOD;//PWM_STEPS - 1; // ARR -> counter max
 	timer_PWM.Init.ClockDivision 		= TIM_CLOCKDIVISION_DIV1;
 	timer_PWM.Init.RepetitionCounter 	= 0;

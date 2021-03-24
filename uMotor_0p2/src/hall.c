@@ -64,42 +64,44 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		b_state = READ_H(HALL_B_PIN) && HALL_B_PIN;
 		c_state = READ_H(HALL_C_PIN) && HALL_C_PIN;
 
+		float m_fRotorThetaInitNow = 0;
 		if(a_state == 1 && b_state == 0 && c_state == 0)
 		{
-			m_fRotorThetaInit = 0.0f;
+			m_fRotorThetaInitNow = 0.0f;
 		}
 		else if(a_state == 1 && b_state == 1 && c_state == 0)
 		{
-			m_fRotorThetaInit = 60.0f;
+			m_fRotorThetaInitNow = 60.0f;
 		}
 		else if(a_state == 0 && b_state == 1 && c_state == 0)
 		{
-			m_fRotorThetaInit = 120.0f;
+			m_fRotorThetaInitNow = 120.0f;
 		}
 		else if(a_state == 0 && b_state == 1 && c_state == 1)
 		{
-			m_fRotorThetaInit = 180.0f;
+			m_fRotorThetaInitNow = 180.0f;
 		}
 		else if(a_state == 0 && b_state == 0 && c_state == 1)
 		{
-			m_fRotorThetaInit = 240.0f;
+			m_fRotorThetaInitNow = 240.0f;
 		}
 		else if(a_state == 1 && b_state == 0 && c_state == 1)
 		{
-			m_fRotorThetaInit = 300.0f;
+			m_fRotorThetaInitNow = 300.0f;
 		}
 
-		if((rotor_theta_init_L - m_fRotorThetaInit) == 60 || (rotor_theta_init_L - m_fRotorThetaInit) == -300)
-			reversing = 1;
-		else
-			reversing = 0;
+		if(m_fRotorThetaInitNow == m_fRotorThetaInit)
+		{
+//			if((rotor_theta_init_L - m_fRotorThetaInit) == 60 || (rotor_theta_init_L - m_fRotorThetaInit) == -300)
+//				reversing = 1;
+//			else
+//				reversing = 0;
+//			rotor_theta_init_L = m_fRotorThetaInit;
+			mechAngleoffset = m_fMechAngle;
+		}
 
-		rotor_theta_init_L = m_fRotorThetaInit;
-
-		mechAngleoffset = -((float)Encoder_GetAngle() * 4.0f);
-
-		HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 	}
+	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 void Hall_InputInit(void)
@@ -109,7 +111,7 @@ void Hall_InputInit(void)
 	gAPin.Mode 		= GPIO_MODE_IT_RISING_FALLING;
 	gAPin.Pull 		= GPIO_NOPULL;
 	gAPin.Speed 	= GPIO_SPEED_LOW;
-//	HAL_GPIO_Init(HALL_PORT, &gAPin);
+	HAL_GPIO_Init(HALL_PORT, &gAPin);
 	/* EXTI interrupt init*/
 #if 1
 	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 1);

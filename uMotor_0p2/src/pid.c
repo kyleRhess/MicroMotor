@@ -14,9 +14,9 @@ void PID_Initialize(PID_Controller * _PID)
 	_PID->updates 			= 0;
 }
 
-float PID_Update(PID_Controller * _PID, float systemFeedback)
+double PID_Update(PID_Controller * _PID, double systemFeedback)
 {
-	float new_i = 0.0f;
+	double new_i = 0.0f;
 	int windGaurd = 1;
 	// Compute error between set-point and system measurement
 	_PID->sampleError = _PID->setPoint - systemFeedback;
@@ -66,42 +66,42 @@ float PID_Update(PID_Controller * _PID, float systemFeedback)
 	return _PID->controllerOutput;
 }
 
-void PID_SetSetpoint(PID_Controller * _PID, float newSetpoint)
+void PID_SetSetpoint(PID_Controller * _PID, double newSetpoint)
 {
 	_PID->setPoint = newSetpoint;
 }
 
-float PID_GetOutput(PID_Controller * _PID)
+double PID_GetOutput(PID_Controller * _PID)
 {
 	return _PID->controllerOutput;
 }
 
-void PID_SetOutput(PID_Controller * _PID, float newOutput)
+void PID_SetOutput(PID_Controller * _PID, double newOutput)
 {
 	_PID->controllerOutput = newOutput;
 }
 
-float PID_GetSetpoint(PID_Controller * _PID)
+double PID_GetSetpoint(PID_Controller * _PID)
 {
 	return _PID->setPoint;
 }
 
-float PID_GetLastInput(PID_Controller * _PID)
+double PID_GetLastInput(PID_Controller * _PID)
 {
 	return _PID->lastError;
 }
 
-void PID_SetKp(PID_Controller * _PID, float proportional_gain)
+void PID_SetKp(PID_Controller * _PID, double proportional_gain)
 {
 	_PID->kP = proportional_gain;
 }
 
-void PID_SetKi(PID_Controller * _PID, float integral_gain)
+void PID_SetKi(PID_Controller * _PID, double integral_gain)
 {
 	_PID->kI = integral_gain;
 }
 
-void PID_SetKd(PID_Controller * _PID, float derivative_gain)
+void PID_SetKd(PID_Controller * _PID, double derivative_gain)
 {
 	_PID->kD = derivative_gain;
 }

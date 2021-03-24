@@ -65,9 +65,9 @@ uint32_t Encoder_GetCounts(void)
 	return qTimer.Instance->CNT;
 }
 
-float Encoder_GetAngle(void)
+double Encoder_GetAngle(void)
 {
-	return (float)(int32_t)qTimer.Instance->CNT * 0.015f;
+	return (double)(int32_t)qTimer.Instance->CNT * 0.015;
 }
 
 void Encoder_Reset(void)
@@ -81,9 +81,9 @@ void Encoder_Reset(void)
 void EXTI15_10_IRQHandler(void)
 {
 	HAL_GPIO_EXTI_IRQHandler(ENCODER_Z_PIN);
-//	HAL_GPIO_EXTI_IRQHandler(HALL_A_PIN);
-//	HAL_GPIO_EXTI_IRQHandler(HALL_B_PIN);
-//	HAL_GPIO_EXTI_IRQHandler(HALL_C_PIN);
+	HAL_GPIO_EXTI_IRQHandler(HALL_A_PIN);
+	HAL_GPIO_EXTI_IRQHandler(HALL_B_PIN);
+	HAL_GPIO_EXTI_IRQHandler(HALL_C_PIN);
 }
 
 /**

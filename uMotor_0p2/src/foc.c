@@ -2,14 +2,6 @@
 #include "foc.h"
 #include "signal.h"
 
-#define Q_WIND		1.0f
-#define D_WIND		1.0f
-#define SPEED_WIND	2.8f	// amps
-#define POS_WIND	8000.0f // deg/s
-#define Kp			0.055f
-#define Ki			8.74399996f
-#define PID_FREQ	2000.0f
-
 // =====================================
 // Space Vector Modulation variables
 // =====================================
@@ -37,7 +29,6 @@ static float m_fLastTimeUs 			= 0;
 static float m_fLastTimeUsSpeed 	= 0;
 static float m_fDeltaTSpeed 		= 0;
 static float m_fDeltaT		 		= 0;
-static float m_fMechAngleLast		= 0.0f;
 
 // =====================================
 // Clarke & Park variables
@@ -57,7 +48,8 @@ static float v_beta 				= 0;
 // =====================================
 
 float m_fRotorThetaInit 			= 0;
-float m_fMechAngle					= 0.0f;
+double m_fMechAngle					= 0.0f;
+double m_fMechAngleLast				= 0.0f;
 float m_fCurrentA 					= 0.0f;
 float m_fCurrentB 					= 0.0f;
 float m_fCurrentC 					= 0.0f;
@@ -71,7 +63,7 @@ int reversing 						= 0;
 int a_state 						= 0;
 int b_state 						= 0;
 int c_state 						= 0;
-float mechAngleoffset				= 0.0f;
+double mechAngleoffset				= 0.0f;
 
 PID_Controller pi_axis_d;
 PID_Controller pi_axis_q;
@@ -220,6 +212,12 @@ void FOC_Init(void)
 	rotor_theta_init_L = m_fRotorThetaInit;
 }
 
+static float float_rand( float min, float max )
+{
+    float scale = rand() / (float) RAND_MAX; /* [0, 1.0] */
+    return min + scale * ( max - min );      /* [min, max] */
+}
+
 void Run_SVM(void)
 {
 #if 0
@@ -245,16 +243,8 @@ void Run_SVM(void)
 	}
 #endif
 
-#if 0
-	// Check for motor over-speed
-	if(DPS_TO_RPM(fabsf(m_fSpeed)) > MAX_SPEED)
-	{
-		while(1)
-		{
-			Signal_SetMotorState(MOTOR_MODE_DISABLE);
-		}
-	}
-#endif
+	// Get rotor angle
+	m_fMechAngle		= -((double)Encoder_GetAngle() * 4.0);
 
 	// Get time delta between computations (deal with wrap-around)
 	if(m_fLastTimeUsSpeed > Clock_GetUs())
@@ -266,19 +256,19 @@ void Run_SVM(void)
 	// Compute speed at a decimated rate
 	if(m_fDeltaTSpeed > 0.001f)
 	{
-		m_fSpeed 			= (((m_fMechAngle - m_fMechAngleLast) / m_fDeltaTSpeed))/4.0f;
+		m_fSpeed 			= ((float)(m_fMechAngle - m_fMechAngleLast) / 4.0f) / m_fDeltaTSpeed;
 		m_fMechAngleLast 	= m_fMechAngle;
 		m_fLastTimeUsSpeed 	= (float)Clock_GetUs();
 	}
 
-	// Get rotor angle
-	m_fMechAngle		= -((float)Encoder_GetAngle() * 4.0f);
+	// Check for motor over-speed
+	if(DPS_TO_RPM(fabsf(m_fSpeed)) > MAX_SPEED)
+	{
+		Signal_SetMotorState(MOTOR_MODE_OVERSPEED);
+	}
 
 	// Convert rotor angle to electrical angle
-	if(reversing)
-		m_fRotorTheta  	= m_fRotorThetaInit + (m_fMechAngle - mechAngleoffset) - 30.0f;
-	else
-		m_fRotorTheta  	= m_fRotorThetaInit + (m_fMechAngle - mechAngleoffset) - 90.0f;
+	m_fRotorTheta  	= m_fRotorThetaInit + (float)(m_fMechAngle - mechAngleoffset) - 90.0f;
 
 	// Don't run controllers if motor is disabled
 	if(!(Signal_GetMotorState() & MOTOR_MODE_ENABLE))
@@ -292,7 +282,7 @@ void Run_SVM(void)
 	{
 		static uint32_t lllsl = 0;
 		static int fwd = 0;
-		if(Clock_GetMsLast() < 10000 && Clock_GetMsLast() - lllsl >= 1000)
+		if(Clock_GetMsLast() < 1000000000 && Clock_GetMsLast() - lllsl >= 500)
 		{
 //			if(fwd)
 //			{
@@ -305,7 +295,7 @@ void Run_SVM(void)
 //				pi_pos.setPoint += 360.0f;
 //			}
 
-			pi_pos.setPoint = -6.0f * ((float)Clock_GetMsLast()/1000.0f);
+			pi_pos.setPoint = 1234567.8f;
 			lllsl = Clock_GetMsLast();
 		}
 		else
@@ -318,6 +308,7 @@ void Run_SVM(void)
 			m_fLastTimeUs 	= (float)Clock_GetUs();
 
 			// TESTING
+//			pi_pos.setPoint += float_rand(-0.5f, 0.5f);
 			if(Signal_GetMotorState() & MOTOR_MODE_HOMING)
 				pi_pos.setPoint	+= m_fDeltaT * 20.0f;
 			else if(Signal_GetMotorState() & MOTOR_MODE_SPEED)
@@ -331,8 +322,12 @@ void Run_SVM(void)
 
 //	if(Signal_GetMotorState() & MOTOR_MODE_POSITION)
 //	{
-		pi_speed.setPoint 	= PID_Update(&pi_pos, m_fMechAngle/4.0f);
+		pi_speed.setPoint 	= PID_Update(&pi_pos, (m_fMechAngle / 4.0));
 		pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
+
+//		pi_speed.setPoint	= Signal_GetMotorPWM()*80.0f;
+//		pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
+
 //	}
 //	else if(Signal_GetMotorState() & MOTOR_MODE_SPEED)
 //	{

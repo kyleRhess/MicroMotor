@@ -19,8 +19,16 @@
 #define PI_2				1.570796327f    // pi / 2
 
 #define DPS_TO_RPM(xx)		((xx) / 6.0f)
-#define MAX_SPEED			5000.0f			// Maximum RPM
+#define MAX_SPEED			2000.0f			// Maximum RPM
+#define MAX_CURRENT			3.0f			// Maximum current per phase
 
+#define Q_WIND		        1.0f
+#define D_WIND		        1.0f
+#define SPEED_WIND	        (MAX_CURRENT * 0.8f) // amps
+#define POS_WIND	        8000.0f // �/s
+#define Kp			        0.055f
+#define Ki			        8.74399996f
+#define PID_FREQ	        2000.0f	// Hz
 
 
 #define POS_CONTROL
@@ -31,7 +39,8 @@
 //#define	SINE_MODULATION
 
 extern float m_fRotorThetaInit;
-extern float m_fMechAngle;
+extern double m_fMechAngle;
+extern double m_fMechAngleLast;
 extern float m_fCurrentA;
 extern float m_fCurrentB;
 extern float m_fCurrentC;
@@ -45,12 +54,16 @@ extern int reversing;
 extern int a_state;
 extern int b_state;
 extern int c_state;
-extern float mechAngleoffset;
+extern double mechAngleoffset;
+
 
 extern PID_Controller pi_axis_d;
 extern PID_Controller pi_axis_q;
 extern PID_Controller pi_speed;
 extern PID_Controller pi_pos;
+
+
+
 
 void FOC_Init(void);
 void Run_SVM(void);

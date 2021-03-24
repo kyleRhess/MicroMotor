@@ -8,7 +8,7 @@
 #include "stm32f4xx_hal_tim.h"
 #include "stm32f4xx_hal_tim_ex.h"
 
-#define DEAD_TIME				500		// ns
+#define DEAD_TIME				100		// ns
 #define PWM_F					20000 	// Hz
 
 #define CLOCK_CYCLES_PER_SECOND 100000000

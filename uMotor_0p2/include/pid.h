@@ -5,34 +5,34 @@
 
 typedef struct PID_Control
 {
-	float kP;
-	float kI;
-	float kD;
-	float deltaTime;
-	float setPoint;
+	double kP;
+	double kI;
+	double kD;
+	double deltaTime;
+	double setPoint;
 
 	uint32_t updates; /*I know you wont listen, but don't ever touch these members.*/
-	float sampleError;/*I know you wont listen, but don't ever touch these members.*/
-	float deltaInput;/*I know you wont listen, but don't ever touch these members.*/
-	float lastError;/*I know you wont listen, but don't ever touch these members.*/
-	float PTerm;/*I know you wont listen, but don't ever touch these members.*/
-	float ITerm;/*I know you wont listen, but don't ever touch these members.*/
-	float DTerm;/*I know you wont listen, but don't ever touch these members.*/
-	float controllerOutput;/*I know you wont listen, but don't ever touch these members.*/
-	float windupMax;/*I know you wont listen, but don't ever touch these members.*/
-	float windupMin;/*I know you wont listen, but don't ever touch these members.*/
+	double sampleError;/*I know you wont listen, but don't ever touch these members.*/
+	double deltaInput;/*I know you wont listen, but don't ever touch these members.*/
+	double lastError;/*I know you wont listen, but don't ever touch these members.*/
+	double PTerm;/*I know you wont listen, but don't ever touch these members.*/
+	double ITerm;/*I know you wont listen, but don't ever touch these members.*/
+	double DTerm;/*I know you wont listen, but don't ever touch these members.*/
+	double controllerOutput;/*I know you wont listen, but don't ever touch these members.*/
+	double windupMax;/*I know you wont listen, but don't ever touch these members.*/
+	double windupMin;/*I know you wont listen, but don't ever touch these members.*/
 } PID_Controller;
 
 void PID_Initialize	(PID_Controller * _PID);
-float PID_Update	(PID_Controller * _PID, float systemFeedback);
-void PID_SetSetpoint(PID_Controller * _PID, float newSetpoint);
-void PID_SetKp		(PID_Controller * _PID, float proportional_gain);
-void PID_SetKi		(PID_Controller * _PID, float integral_gain);
-void PID_SetKd		(PID_Controller * _PID, float derivative_gain);
+double PID_Update	(PID_Controller * _PID, double systemFeedback);
+void PID_SetSetpoint(PID_Controller * _PID, double newSetpoint);
+void PID_SetKp		(PID_Controller * _PID, double proportional_gain);
+void PID_SetKi		(PID_Controller * _PID, double integral_gain);
+void PID_SetKd		(PID_Controller * _PID, double derivative_gain);
 void PID_Reset		(PID_Controller * _PID);
-float PID_GetOutput	(PID_Controller * _PID);
-void PID_SetOutput	(PID_Controller * _PID, float newOutput);
-float PID_GetSetpoint(PID_Controller * _PID);
-float PID_GetLastInput(PID_Controller * _PID);
+double PID_GetOutput	(PID_Controller * _PID);
+void PID_SetOutput	(PID_Controller * _PID, double newOutput);
+double PID_GetSetpoint(PID_Controller * _PID);
+double PID_GetLastInput(PID_Controller * _PID);
 
 #endif /* PID_H_ */

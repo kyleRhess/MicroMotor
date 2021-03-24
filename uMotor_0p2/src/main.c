@@ -124,10 +124,10 @@ int main(int argc, char* argv[])
 
 	while (1)
 	{
-		//Signal monitor
+		// TODO: Move Signal monitor elsewhere
 		///////////////////////////////////////////////////////////
 		if((Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT) ||
-		   (Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT))
+		   (Signal_GetMotorState() & MOTOR_MODE_OVERSPEED))
 		{
 			Signal_ClearMotorState(MOTOR_MODE_ENABLE);
 			System_WritePin(GPIOB, GPIO_DIS_PIN, 1);
