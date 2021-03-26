@@ -25,7 +25,7 @@ static float v_c 					= 0;
 // =====================================
 // Estimator variables
 // =====================================
-static float m_fLastTimeUs 			= 0;
+static uint32_t m_fLastTimeUs 			= 0;
 static float m_fLastTimeUsSpeed 	= 0;
 static float m_fDeltaTSpeed 		= 0;
 static float m_fDeltaT		 		= 0;
@@ -58,6 +58,10 @@ float m_fIq 						= 0;
 float m_fSpeed						= 0;
 float m_fRotorTheta					= 0.0f;
 
+
+float m_fSpeedFilt					= 0;
+
+
 float rotor_theta_init_L 			= 0;
 int reversing 						= 0;
 int a_state 						= 0;
@@ -72,18 +76,20 @@ PID_Controller pi_pos;
 
 typedef struct FloatField
 {
-	float		torqueValue; 	// 1
-	float		torqueReq;		// 2
-	float		speedValue; 	// 3
-	float		speedReq;		// 4
-	float		posValue; 		// 5
-	float		posReq;			// 6
-	float		currentA;		// 7
-	float		currentB;		// 8
-	float		currentC;		// 8
-	float		angle;			// 9
+	uint8_t		beg; 			// 1
+	float		torqueValue; 	// 2
+	float		torqueReq;		// 3
+	float		speedValue; 	// 4
+	float		speedReq;		// 5
+	float		posValue; 		// 6
+	float		posReq;			// 7
+	float		currentA;		// 8
+	float		currentB;		// 9
+	float		currentC;		// 10
+	float		angle;			// 11
+	uint8_t		end; 			// 12
 } __attribute__((__packed__)) FloatField;
-static uint8_t uartTxBuff[64];
+static uint8_t uartTxBuff[128];
 static FloatField txCmdData;
 
 #ifdef FAST_TRIG
@@ -154,7 +160,7 @@ void FOC_Init(void)
 	pi_speed.setPoint 		= 0.0f;
 	pi_speed.deltaTime 		= (1.0f / PID_FREQ);
 
-	pi_pos.kP 				= 21.0f;
+	pi_pos.kP 				= 35.0f;
 	pi_pos.kI 				= 0.0f;
 	pi_pos.kD 				= 0.0f;
 	pi_pos.setPoint 		= 0.0f;
@@ -223,20 +229,22 @@ void Run_SVM(void)
 #if 0
 	static int div = 0;
 	div++;
-	if(div == 2)
+	if(div >= 2 && Clock_GetMsLast() > 4000)
 	{
 		div = 0;
 
+		txCmdData.beg			= 0xAA;
 		txCmdData.angle 		= m_fRotorTheta;
-		txCmdData.m_fCurrentA 	= m_fCurrentA;
-		txCmdData.m_fCurrentB 	= m_fCurrentB;
-		txCmdData.m_fCurrentC 	= m_fCurrentC;
+		txCmdData.currentA 		= m_fCurrentA;
+		txCmdData.currentB 		= m_fCurrentB;
+		txCmdData.currentC 		= m_fCurrentC;
 		txCmdData.posReq 		= pi_pos.setPoint;
-		txCmdData.posValue		= pi_pos.lastInput;
-		txCmdData.speedReq 		= pi_speed.setPoint;
-		txCmdData.speedValue 	= pi_speed.lastInput;
+		txCmdData.posValue		= (m_fMechAngle / 4.0);
+		txCmdData.speedReq 		= (Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/125.0f;
+		txCmdData.speedValue 	= m_fSpeedFilt;
 		txCmdData.torqueReq 	= pi_axis_q.setPoint;
-		txCmdData.torqueValue 	= pi_axis_q.lastInput;
+		txCmdData.torqueValue 	= m_fIq;
+		txCmdData.end			= 0xAA;
 
 		memcpy(&uartTxBuff[0], &txCmdData, sizeof(txCmdData));
 		Serial_TxData2(uartTxBuff, sizeof(txCmdData));
@@ -257,6 +265,7 @@ void Run_SVM(void)
 	if(m_fDeltaTSpeed > 0.001f)
 	{
 		m_fSpeed 			= ((float)(m_fMechAngle - m_fMechAngleLast) / 4.0f) / m_fDeltaTSpeed;
+		m_fSpeedFilt		= m_fSpeedFilt * 0.99f + m_fSpeed * 0.01f;
 		m_fMechAngleLast 	= m_fMechAngle;
 		m_fLastTimeUsSpeed 	= (float)Clock_GetUs();
 	}
@@ -282,33 +291,35 @@ void Run_SVM(void)
 	{
 		static uint32_t lllsl = 0;
 		static int fwd = 0;
-		if(Clock_GetMsLast() < 1000000000 && Clock_GetMsLast() - lllsl >= 500)
+		if(Clock_GetMsLast() < 30 && Clock_GetMsLast() - lllsl >= 1000)
 		{
-//			if(fwd)
-//			{
-//				fwd = 0;
-//				pi_pos.setPoint -= 360.0f;
-//			}
-//			else
-//			{
-//				fwd = 1;
-//				pi_pos.setPoint += 360.0f;
-//			}
+			if(fwd)
+			{
+				fwd = 0;
+				pi_pos.setPoint -= 180.0f;
+			}
+			else
+			{
+				fwd = 1;
+				pi_pos.setPoint += 180.0f;
+			}
 
-			pi_pos.setPoint = 1234567.8f;
+//			pi_pos.setPoint = 1234567.8f;
 			lllsl = Clock_GetMsLast();
 		}
 		else
 		{
-			if(m_fLastTimeUs > Clock_GetUs())
-				m_fDeltaT = (float)UINT32_MAX - m_fLastTimeUs;
+			if(m_fLastTimeUs > Clock_GetMs())
+				m_fDeltaT = (float)UINT32_MAX - (float)m_fLastTimeUs;
 			else
-				m_fDeltaT = (float)Clock_GetUs() - m_fLastTimeUs;
-			m_fDeltaT /= 1000000.0f;
-			m_fLastTimeUs 	= (float)Clock_GetUs();
+				m_fDeltaT = (float)Clock_GetMs() - (float)m_fLastTimeUs;
+			m_fDeltaT /= 1000.0f;
+			m_fLastTimeUs 	= Clock_GetMs();
 
-			// TESTING
 //			pi_pos.setPoint += float_rand(-0.5f, 0.5f);
+//			pi_pos.setPoint += m_fDeltaTSpeed * 12.0f;
+
+//			// TESTING
 			if(Signal_GetMotorState() & MOTOR_MODE_HOMING)
 				pi_pos.setPoint	+= m_fDeltaT * 20.0f;
 			else if(Signal_GetMotorState() & MOTOR_MODE_SPEED)

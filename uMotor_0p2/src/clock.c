@@ -66,17 +66,20 @@ int Clock_UpdateTimerUs(ClockTimerus *ct)
 	return rc;
 }
 
-void TIM1_BRK_TIM9_IRQHandler(void)
-{
-	HAL_TIM_IRQHandler(&SamplingTimer);
-}
-
 static int timerDivisor = 0;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	TIM1->SR  		= 0x00;
-	timeElapUs 		+= TIME_ELAP_US;
 	timerDivisor++;
+
+	static unsigned long t1 = 0;
+	static unsigned long t2 = 0;
+	static unsigned long diff = 0;
+	t2 = DWT->CYCCNT;
+	diff = t2 - t1;
+	t1 = DWT->CYCCNT;
+
+	timeElapUs		+= TIME_ELAP_US;
 
 #ifdef DEBUG_PIN
 	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
@@ -91,7 +94,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	// 1 ms tick
 	if((timeElapUs - timeElapUsLast) >= 1000)
 	{
-		timeElapMs += 1;
+		timeElapMs = timeElapUs/1000;
 		timeElapMsLast = timeElapMs;
 		timeElapUsLast = timeElapUs;
 	}

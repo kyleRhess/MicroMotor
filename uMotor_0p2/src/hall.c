@@ -28,6 +28,7 @@ static void hall_monitor(uint8_t hall_num, int state)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
+#if 1
 	HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 
 	if(GPIO_Pin == ENCODER_Z_PIN)
@@ -102,6 +103,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 	}
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+#endif
 }
 
 void Hall_InputInit(void)
@@ -113,10 +115,8 @@ void Hall_InputInit(void)
 	gAPin.Speed 	= GPIO_SPEED_LOW;
 	HAL_GPIO_Init(HALL_PORT, &gAPin);
 	/* EXTI interrupt init*/
-#if 1
 	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 1);
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
-#endif
 }
 
 void Hall_ComputeRPM(float timeStep)

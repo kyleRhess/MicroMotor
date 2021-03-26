@@ -52,7 +52,7 @@ static uint32_t proc_command(uint32_t command)
 			break;
 		case CMD_MOTOR_QUERY:
 			rc = command;
-			txCmdData.pwmValue 		= pi_pos.setPoint;//Hall_GetRPM();// Signal_GetMotorPWM();
+			txCmdData.pwmValue 		= m_fRotorTheta;//Hall_GetRPM();// Signal_GetMotorPWM();
 			txCmdData.driveMode 	= Signal_GetMotorState();
 			txCmdData.rpmValue 		= m_fMechAngle / 4.0f;//pi_pos.lastInput;//Hall_GetRPM();
 			txCmdData.encoderCnt 	= Clock_GetUsLast();

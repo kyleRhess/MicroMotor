@@ -9,13 +9,13 @@
 #include "stm32f4xx_hal_tim_ex.h"
 
 #define DEAD_TIME				100		// ns
-#define PWM_F					20000 	// Hz
+#define PWM_F					19738 	// Hz
 
 #define CLOCK_CYCLES_PER_SECOND 100000000
 #define PWM_PRESCALE			0
-#define PWM_PERIOD			 	((CLOCK_CYCLES_PER_SECOND/2) / PWM_F) - 1 							// Freq = 100000000 / ((PWM_PRESCALE + 1) * (PWM_PERIOD + 1))
+#define PWM_PERIOD			 	((CLOCK_CYCLES_PER_SECOND/2) / PWM_F) 		// Freq = 100000000 / ((PWM_PRESCALE + 1) * (PWM_PERIOD + 1))
 #define PWM_FREQ 				(CLOCK_CYCLES_PER_SECOND / ((PWM_PRESCALE + 1) * (PWM_PERIOD + 1)))
-#define PULSE_NS_PER_CNT		(10 * (PWM_PRESCALE+1))  											// = (10ns per Prescaler count) + 10ns
+#define PULSE_NS_PER_CNT		(10 * (PWM_PRESCALE+1))  					// = (10ns per Prescaler count) + 10ns
 #define CNTS_FROM_US(xxx)		((xxx * 1000) / PULSE_NS_PER_CNT)
 #define MAX_RELOAD              0xFFFF
 

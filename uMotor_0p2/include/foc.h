@@ -25,7 +25,7 @@
 #define Q_WIND		        1.0f
 #define D_WIND		        1.0f
 #define SPEED_WIND	        (MAX_CURRENT * 0.8f) // amps
-#define POS_WIND	        8000.0f // �/s
+#define POS_WIND	        8000.0f // deg/s
 #define Kp			        0.055f
 #define Ki			        8.74399996f
 #define PID_FREQ	        2000.0f	// Hz

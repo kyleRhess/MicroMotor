@@ -49,7 +49,6 @@
 #include "PID.h"
 
 
-
 TIM_HandleTypeDef q_time;
 TIM_HandleTypeDef htim1;
 UART_HandleTypeDef huart1 = { .Instance = USART1 };
@@ -77,6 +76,10 @@ int main(int argc, char* argv[])
 	RCC->AHB1ENR 	= RCC_AHB1ENR_GPIOCEN;
 	RCC->AHB1ENR 	|= RCC_AHB1ENR_GPIOAEN;
 	RCC->AHB1ENR 	|= RCC_AHB1ENR_GPIOBEN;
+
+	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+	DWT->CYCCNT = 0;
+	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
 	Signal_Init();
 
@@ -233,10 +236,11 @@ void setHighSystemClk(void)
 
 	// This assumes the HSI_VALUE is a multiple of 1 MHz. If this is not
 	// your case, you have to recompute these PLL constants.
-	RCC_OscInitStruct.PLL.PLLM = (HSI_VALUE/1000000u);
-	RCC_OscInitStruct.PLL.PLLN = 400; // for 100 MHz
-	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4; /* 84 MHz, conservative */
-	RCC_OscInitStruct.PLL.PLLQ = 7; /* To make USB work. */
+	RCC_OscInitStruct.PLL.PLLM = 16;//(HSI_VALUE/1000000u);
+	RCC_OscInitStruct.PLL.PLLN = 200; // for 100 MHz
+	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2; /* 84 MHz, conservative */
+	RCC_OscInitStruct.PLL.PLLQ = 4; /* To make USB work. */
+	RCC_OscInitStruct.PLL.PLLR = 2;
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
 	HAL_RCC_OscConfig(&RCC_OscInitStruct);
 
@@ -244,16 +248,16 @@ void setHighSystemClk(void)
 
 	// Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2
 	// clocks dividers
-	RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK
-	  | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
+	RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
 	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
 
 	// This is expected to work for most large cores.
 	// Check and update it for your own configuration.
 	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
 	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-	HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5);
+
+	HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3);
 
 	HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
 	HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
@@ -265,9 +269,9 @@ void setHighSystemClk(void)
   */
 void Error_Handler(void)
 {
-  /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  /* USER CODE END Error_Handler_Debug */
+	/* USER CODE BEGIN Error_Handler_Debug */
+	/* User can add his own implementation to report the HAL error return state */
+	/* USER CODE END Error_Handler_Debug */
 }
 
 #ifdef  USE_FULL_ASSERT
@@ -280,10 +284,10 @@ void Error_Handler(void)
   */
 void assert_failed(uint8_t *file, uint32_t line)
 {
-  /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-  /* USER CODE END 6 */
+	/* USER CODE BEGIN 6 */
+	/* User can add his own implementation to report the file name and line number,
+	 tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+	/* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
 
