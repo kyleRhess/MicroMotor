@@ -256,7 +256,10 @@ void Run_SVM(void)
 
 	// Get time delta between computations (deal with wrap-around)
 	if(m_fLastTimeUsSpeed > Clock_GetUs())
+	{
 		m_fDeltaTSpeed = (float)UINT32_MAX - m_fLastTimeUsSpeed;
+		m_fLastTimeUsSpeed 	= (float)Clock_GetUs();
+	}
 	else
 		m_fDeltaTSpeed = (float)Clock_GetUs() - m_fLastTimeUsSpeed;
 	m_fDeltaTSpeed /= 1000000.0f;
