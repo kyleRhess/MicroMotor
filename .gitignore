@@ -199,3 +199,8 @@ message_struct.xlsx
 trackingFilt.py
 Measures_1.xlsx
 RandomStuff_micromotor.xlsx
+plott.py
+serial_read.py
+soundTest.py
+.vscode/settings.json
+__pycache__/serial_read.cpython-38.pyc

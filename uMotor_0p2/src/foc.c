@@ -25,9 +25,6 @@ static float v_c 					= 0;
 // =====================================
 // Estimator variables
 // =====================================
-static uint32_t m_fLastTimeUs 			= 0;
-static float m_fLastTimeUsSpeed 	= 0;
-static float m_fDeltaTSpeed 		= 0;
 static float m_fDeltaT		 		= 0;
 
 // =====================================
@@ -43,12 +40,16 @@ static float v_q 					= 0;
 static float v_alpha 				= 0;
 static float v_beta 				= 0;
 
+static ClockTimerus speedTimer;
+static ClockTimerus positionTimer;
+
 // =====================================
 // EXTERNS
 // =====================================
 
 float m_fRotorThetaInit 			= 0;
 double m_fMechAngle					= 0.0f;
+double m_fHomeOffset				= 0.0f;
 double m_fMechAngleLast				= 0.0f;
 float m_fCurrentA 					= 0.0f;
 float m_fCurrentB 					= 0.0f;
@@ -58,9 +59,7 @@ float m_fIq 						= 0;
 float m_fSpeed						= 0;
 float m_fRotorTheta					= 0.0f;
 
-
 float m_fSpeedFilt					= 0;
-
 
 float rotor_theta_init_L 			= 0;
 int reversing 						= 0;
@@ -77,17 +76,17 @@ PID_Controller pi_pos;
 typedef struct FloatField
 {
 	uint8_t		beg; 			// 1
-	float		torqueValue; 	// 2
-	float		torqueReq;		// 3
-	float		speedValue; 	// 4
-	float		speedReq;		// 5
-	float		posValue; 		// 6
-	float		posReq;			// 7
-	float		currentA;		// 8
-	float		currentB;		// 9
-	float		currentC;		// 10
-	float		angle;			// 11
-	uint8_t		end; 			// 12
+	uint32_t	timeUs; 		// 2
+	float		torqueValue; 	// 3
+	float		torqueReq;		// 4
+	float		speedValue; 	// 5
+	float		speedReq;		// 6
+	float		posValue; 		// 7
+	float		posReq;			// 8
+	float		currentA;		// 9
+	float		currentB;		// 10
+	float		currentC;		// 11
+	float		angle;			// 12
 } __attribute__((__packed__)) FloatField;
 static uint8_t uartTxBuff[128];
 static FloatField txCmdData;
@@ -115,11 +114,9 @@ void FOC_Init(void)
 	v_b 					= 0;
 	v_c 					= 0;
 	#endif
-	m_fLastTimeUs 			= 0;
-	m_fLastTimeUsSpeed 		= 0;
-	m_fDeltaTSpeed 			= 0;
 	m_fDeltaT 				= 0;
 	m_fMechAngleLast		= 0.0f;
+	m_fHomeOffset			= 0.0f;
 	i_a						= 0;
 	i_b						= 0;
 	i_c						= 0;
@@ -154,17 +151,17 @@ void FOC_Init(void)
 	pi_axis_q.setPoint 		= 0.0f;
 	pi_axis_q.deltaTime 	= (1.0f / PID_FREQ);
 
-	pi_speed.kP 			= 0.008512000013f;
-	pi_speed.kI 			= 0.04739300018f;
+	pi_speed.kP 			= 0.0018000000854954123;
+	pi_speed.kI 			= 0.087999999523162842;
 	pi_speed.kD 			= 0.0f;
 	pi_speed.setPoint 		= 0.0f;
-	pi_speed.deltaTime 		= (1.0f / PID_FREQ);
+	pi_speed.deltaTime 		= (1.0f / 500);
 
-	pi_pos.kP 				= 35.0f;
+	pi_pos.kP 				= 30.0;
 	pi_pos.kI 				= 0.0f;
 	pi_pos.kD 				= 0.0f;
 	pi_pos.setPoint 		= 0.0f;
-	pi_pos.deltaTime 		= (1.0f / PID_FREQ);
+	pi_pos.deltaTime 		= (1.0f / 50);
 
 	PID_Initialize(&pi_axis_d);
 	PID_Initialize(&pi_axis_q);
@@ -216,6 +213,9 @@ void FOC_Init(void)
 	}
 
 	rotor_theta_init_L = m_fRotorThetaInit;
+
+	Clock_StartTimerUs(&speedTimer, 2000);
+	Clock_StartTimerUs(&positionTimer, 20000);
 }
 
 static float float_rand( float min, float max )
@@ -227,60 +227,72 @@ static float float_rand( float min, float max )
 void Run_SVM(void)
 {
 #if 0
+	static float setPoint = 0;
 	static int div = 0;
 	div++;
-	if(div >= 2 && Clock_GetMsLast() > 4000)
+	if(div >= 2 && Clock_GetMsLast() > 10000)
 	{
 		div = 0;
 
 		txCmdData.beg			= 0xAA;
+		txCmdData.timeUs		= Clock_GetUs();
 		txCmdData.angle 		= m_fRotorTheta;
 		txCmdData.currentA 		= m_fCurrentA;
 		txCmdData.currentB 		= m_fCurrentB;
 		txCmdData.currentC 		= m_fCurrentC;
 		txCmdData.posReq 		= pi_pos.setPoint;
 		txCmdData.posValue		= (m_fMechAngle / 4.0);
-		txCmdData.speedReq 		= (Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/125.0f;
-		txCmdData.speedValue 	= m_fSpeedFilt;
+		txCmdData.speedReq 		= setPoint;
+		txCmdData.speedValue 	= m_fSpeed;
 		txCmdData.torqueReq 	= pi_axis_q.setPoint;
 		txCmdData.torqueValue 	= m_fIq;
-		txCmdData.end			= 0xAA;
 
 		memcpy(&uartTxBuff[0], &txCmdData, sizeof(txCmdData));
 		Serial_TxData2(uartTxBuff, sizeof(txCmdData));
+
+
+		Signal_SetMotorState(MOTOR_MODE_ENABLE);
+//		Signal_SetMotorState(MOTOR_MODE_POSITION);
+		Signal_SetMotorState(MOTOR_MODE_SPEED);
+
+
+//		static uint32_t lllsl = 0;
+//		static int fwd = -1;
+//		if(Clock_GetMsLast() - lllsl >= 2000)
+//		{
+//			if(fwd == -1)
+//			{
+//				fwd = 0;
+//				lllsl = Clock_GetMsLast();
+//			}
+//
+//			if(fwd)
+//			{
+//				fwd = 0;
+//				setPoint = 0.5f;
+//			}
+//			else
+//			{
+//				fwd = 1;
+//				setPoint = -0.5f;
+//			}
+//			lllsl = Clock_GetMsLast();
+//		}
+
+		setPoint = sinf(((float)Clock_GetMsLast()/1000.0f) * PI * (20.0f + ((float)Clock_GetMsLast()/1000.0f)));
 	}
 #endif
+
+//	pi_speed.kP = Signal_GetMotorPosKp() / 100.0f;
+//	pi_speed.kI = Signal_GetMotorPosKi() / 10.0f;
+//	pi_pos.kP = Signal_GetMotorPosKp() * 100.0f;
+//	pi_pos.kI = Signal_GetMotorPosKp();
 
 	// Get rotor angle
 	m_fMechAngle		= -((double)Encoder_GetAngle() * 4.0);
 
-	// Get time delta between computations (deal with wrap-around)
-	if(m_fLastTimeUsSpeed > Clock_GetUs())
-	{
-		m_fDeltaTSpeed = (float)UINT32_MAX - m_fLastTimeUsSpeed;
-		m_fLastTimeUsSpeed 	= (float)Clock_GetUs();
-	}
-	else
-		m_fDeltaTSpeed = (float)Clock_GetUs() - m_fLastTimeUsSpeed;
-	m_fDeltaTSpeed /= 1000000.0f;
-
-	// Compute speed at a decimated rate
-	if(m_fDeltaTSpeed > 0.001f)
-	{
-		m_fSpeed 			= ((float)(m_fMechAngle - m_fMechAngleLast) / 4.0f) / m_fDeltaTSpeed;
-		m_fSpeedFilt		= m_fSpeedFilt * 0.99f + m_fSpeed * 0.01f;
-		m_fMechAngleLast 	= m_fMechAngle;
-		m_fLastTimeUsSpeed 	= (float)Clock_GetUs();
-	}
-
-	// Check for motor over-speed
-	if(DPS_TO_RPM(fabsf(m_fSpeed)) > MAX_SPEED)
-	{
-		Signal_SetMotorState(MOTOR_MODE_OVERSPEED);
-	}
-
 	// Convert rotor angle to electrical angle
-	m_fRotorTheta  	= m_fRotorThetaInit + (float)(m_fMechAngle - mechAngleoffset) - 90.0f;
+	m_fRotorTheta  	= m_fRotorThetaInit + (float)(m_fMechAngle - 0) - 90.0f;
 
 	// Don't run controllers if motor is disabled
 	if(!(Signal_GetMotorState() & MOTOR_MODE_ENABLE))
@@ -292,65 +304,86 @@ void Run_SVM(void)
 	}
 	else
 	{
-		static uint32_t lllsl = 0;
-		static int fwd = 0;
-		if(Clock_GetMsLast() < 30 && Clock_GetMsLast() - lllsl >= 1000)
+		// Get CPU cycles between FOC computations
+		static unsigned long t1 = 0;
+		static unsigned long t2 = 0;
+		static unsigned long diff = 0;
+		t2 = DWT->CYCCNT;
+		diff = t2 - t1;
+		t1 = DWT->CYCCNT;
+		m_fDeltaT = ((float)diff / (float)100e+06);
+
+//		pi_pos.setPoint += m_fDeltaT * 10.0f;
+//		pi_speed.setPoint = 50.0f;
+
 		{
-			if(fwd)
-			{
-				fwd = 0;
-				pi_pos.setPoint -= 180.0f;
-			}
-			else
-			{
-				fwd = 1;
-				pi_pos.setPoint += 180.0f;
-			}
-
-//			pi_pos.setPoint = 1234567.8f;
-			lllsl = Clock_GetMsLast();
-		}
-		else
-		{
-			if(m_fLastTimeUs > Clock_GetMs())
-				m_fDeltaT = (float)UINT32_MAX - (float)m_fLastTimeUs;
-			else
-				m_fDeltaT = (float)Clock_GetMs() - (float)m_fLastTimeUs;
-			m_fDeltaT /= 1000.0f;
-			m_fLastTimeUs 	= Clock_GetMs();
-
-//			pi_pos.setPoint += float_rand(-0.5f, 0.5f);
-//			pi_pos.setPoint += m_fDeltaTSpeed * 12.0f;
-
-//			// TESTING
+			// TESTING
 			if(Signal_GetMotorState() & MOTOR_MODE_HOMING)
 				pi_pos.setPoint	+= m_fDeltaT * 20.0f;
 			else if(Signal_GetMotorState() & MOTOR_MODE_SPEED)
 			{
 				pi_pos.setPoint += m_fDeltaT * (Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/125.0f;
+//				pi_speed.setPoint = (Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/125.0f;
 			}
 			else if(Signal_GetMotorState() & MOTOR_MODE_POSITION)
 				pi_pos.setPoint = Signal_GetMotorPos()/1000.0f;
 		}
 	}
 
-//	if(Signal_GetMotorState() & MOTOR_MODE_POSITION)
-//	{
-		pi_speed.setPoint 	= PID_Update(&pi_pos, (m_fMechAngle / 4.0));
-		pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
 
-//		pi_speed.setPoint	= Signal_GetMotorPWM()*80.0f;
-//		pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
+	// Compute speed at a decimated rate
+	if(Clock_UpdateTimerUs(&speedTimer))
+	{
+		static unsigned long t12 = 0;
+		static unsigned long t22 = 0;
+		static unsigned long diff2 = 0;
+		t22 = DWT->CYCCNT;
+		diff2 = t22 - t12;
+		t12 = DWT->CYCCNT;
 
-//	}
-//	else if(Signal_GetMotorState() & MOTOR_MODE_SPEED)
-//	{
-//		pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
-//	}
+		m_fSpeed 			= ((float)(m_fMechAngle - m_fMechAngleLast) / 4.0f) / ((float)diff2 / (float)100e+06);
+		m_fSpeedFilt		= m_fSpeedFilt * 0.99f + m_fSpeed * 0.01f;
+		m_fMechAngleLast 	= m_fMechAngle;
+
+
+//		#define TRQ_CONTROL
+		#ifndef TRQ_CONTROL
+		#if 0
+			pi_speed.setPoint 	= PID_Update(&pi_pos, (m_fMechAngle / 4.0));
+			pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
+		#else
+			if(Signal_GetMotorState() & MOTOR_MODE_POSITION)
+			{
+				if(Clock_UpdateTimerUs(&positionTimer))
+					pi_speed.setPoint 	= PID_Update(&pi_pos, (m_fMechAngle / 4.0));
+
+				pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
+			}
+			else if(Signal_GetMotorState() & MOTOR_MODE_SPEED)
+			{
+				if(Clock_UpdateTimerUs(&positionTimer))
+					pi_speed.setPoint 	= PID_Update(&pi_pos, (m_fMechAngle / 4.0));
+
+				pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
+
+//				pi_axis_q.setPoint 	= PID_Update(&pi_speed, m_fSpeed);
+			}
+		#endif
+		#endif
+	}
+
+	// Check for motor over-speed
+	if(DPS_TO_RPM(fabsf(m_fSpeed)) > MAX_SPEED)
+	{
+		Signal_SetMotorState(MOTOR_MODE_OVERSPEED);
+	}
+
+
 
 #ifdef TRQ_CONTROL
-	pi_axis_q.setPoint 	= Signal_GetMotorPos()/10000.0f;
+	pi_axis_q.setPoint 	= setPoint;
 #endif
+
 
 	// Phase currents
 	i_a 			= m_fCurrentA; // measured value
@@ -488,9 +521,9 @@ void Run_SVM(void)
 			break;
 		default:
 			// possible error state
-			Ta = 0;
-			Tb = 0;
-			Tc = 0;
+			Ta = 0.5f;
+			Tb = 0.5f;
+			Tc = 0.5f;
 	}
 
 	// Drive PWM signals

@@ -52,10 +52,10 @@ static uint32_t proc_command(uint32_t command)
 			break;
 		case CMD_MOTOR_QUERY:
 			rc = command;
-			txCmdData.pwmValue 		= m_fRotorTheta;//Hall_GetRPM();// Signal_GetMotorPWM();
+			txCmdData.pwmValue 		= m_fSpeedFilt;//Hall_GetRPM();// Signal_GetMotorPWM();
 			txCmdData.driveMode 	= Signal_GetMotorState();
-			txCmdData.rpmValue 		= m_fMechAngle / 4.0f;//pi_pos.lastInput;//Hall_GetRPM();
-			txCmdData.encoderCnt 	= Clock_GetUsLast();
+			txCmdData.rpmValue 		= (Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/125.0f;//Hall_GetRPM();
+			txCmdData.encoderCnt 	= Clock_GetUs();
 			break;
 		case CMD_MOTOR_ENABLE:
 			rc = command;
@@ -170,7 +170,13 @@ void Serial_TxData(uint16_t Size)
 
 void Serial_TxData2(uint8_t *txBuff, uint16_t Size)
 {
-	HAL_UART_Transmit_DMA(&s_UARTHandle, txBuff, Size);
+	uint32_t txCrc = 0;
+	crc32(&txBuff[0], Size, &txCrc);
+
+	txCrc = 0xAFAFAFAF;
+	memcpy(&txBuff[Size], &txCrc, 4);
+
+	HAL_UART_Transmit_DMA(&s_UARTHandle, txBuff, Size+4);
 }
 
 void Serial_TxQuery(void)

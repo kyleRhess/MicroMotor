@@ -58,7 +58,7 @@ void ADC_Init(void)
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-#define FILT_K		0.90f
+//#define FILT_K		0.99f
 #ifdef FILT_K
 #define FILT_K_1	(1 - FILT_K)
 	// Initial state needs to be set
@@ -76,8 +76,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	}
 #else
 	g_ADCValue1 = g_ADCBuffer[2];
-	g_ADCValue2 = (float)g_ADCBuffer[1];
-	g_ADCValue3 = (float)g_ADCBuffer[2];
+	g_ADCValue2 = (float)g_ADCBuffer[0];
+	g_ADCValue3 = (float)g_ADCBuffer[1];
 #endif
 
 	m_fCurrentA = ((((float)g_ADCValue3 * ADC_SCALE) - ADC_ZERO) * ADC_RES);

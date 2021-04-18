@@ -72,13 +72,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	TIM1->SR  		= 0x00;
 	timerDivisor++;
 
-	static unsigned long t1 = 0;
-	static unsigned long t2 = 0;
-	static unsigned long diff = 0;
-	t2 = DWT->CYCCNT;
-	diff = t2 - t1;
-	t1 = DWT->CYCCNT;
-
 	timeElapUs		+= TIME_ELAP_US;
 
 #ifdef DEBUG_PIN

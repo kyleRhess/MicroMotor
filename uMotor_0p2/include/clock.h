@@ -8,7 +8,7 @@
 #define TIME_ELAP_US	1000000/(PWM_F * 2)
 #define TIME_ELAP_MS	1000/(PWM_F * 2)
 
-#define SVM_DIVISOR		20
+#define SVM_DIVISOR		10//20
 #define SVM_RATE		(PWM_F * 2)/SVM_DIVISOR
 
 

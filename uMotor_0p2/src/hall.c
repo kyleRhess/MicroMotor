@@ -35,11 +35,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	{
 		if(Signal_GetMotorState() & MOTOR_MODE_HOMING)
 		{
-	//		Signal_ClearMotorState(MOTOR_MODE_ENABLE);
+			Signal_ClearMotorState(MOTOR_MODE_ENABLE);
 			Encoder_Reset();
+//			m_fHomeOffset = m_fMechAngle;
 			Signal_SetMotorPos(0.0f);
 			FOC_Init();
 			Signal_ClearMotorState(MOTOR_MODE_HOMING);
+			Signal_ClearMotorState(MOTOR_MODE_POSITION);
+			Signal_ClearMotorState(MOTOR_MODE_SPEED);
 		}
 	}
 	else

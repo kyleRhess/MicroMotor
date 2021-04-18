@@ -26,9 +26,9 @@
 #define D_WIND		        1.0f
 #define SPEED_WIND	        (MAX_CURRENT * 0.8f) // amps
 #define POS_WIND	        8000.0f // deg/s
-#define Kp			        0.055f
-#define Ki			        8.74399996f
-#define PID_FREQ	        2000.0f	// Hz
+#define Kp			        0.190f
+#define Ki			        60.74399996f
+#define PID_FREQ	        4000.0f	// Hz
 
 
 #define POS_CONTROL
@@ -40,6 +40,7 @@
 
 extern float m_fRotorThetaInit;
 extern double m_fMechAngle;
+extern double m_fHomeOffset;
 extern double m_fMechAngleLast;
 extern float m_fCurrentA;
 extern float m_fCurrentB;
@@ -47,6 +48,9 @@ extern float m_fCurrentC;
 extern float m_fId;
 extern float m_fIq;
 extern float m_fSpeed;
+extern float m_fSpeedFilt;
+extern double velest;
+extern double velintegrator;
 extern float m_fRotorTheta;
 
 extern float rotor_theta_init_L;

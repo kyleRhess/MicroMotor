@@ -162,6 +162,9 @@ void PWM_adjust_PulseWidth(TIM_HandleTypeDef * pwmHandle, uint32_t Channel, floa
 void PWM_Set_Duty(TIM_HandleTypeDef * pwmHandle, uint32_t Channel, float dutyCycle)
 {
 	static uint32_t counts_Ccr = 0;
+
+	if(dutyCycle < 0.0f) dutyCycle = 0.0f;
+
 	counts_Ccr = dutyCycle * pwmHandle->Instance->ARR;
 
 	if(counts_Ccr > pwmHandle->Instance->ARR - DEAD_TIME_BUF)
