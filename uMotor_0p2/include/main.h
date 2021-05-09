@@ -47,6 +47,8 @@
 extern "C" {
 #endif
 
+//#define TRAPZ
+
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
 #include "pid.h"

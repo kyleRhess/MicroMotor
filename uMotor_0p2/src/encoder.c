@@ -52,7 +52,7 @@ void Encoder_ZInit(void)
 	GPIO_InitTypeDef gZPin;
 	gZPin.Pin 		= ENCODER_Z_PIN;
 	gZPin.Mode 		= GPIO_MODE_IT_RISING;
-	gZPin.Pull 		= GPIO_NOPULL;
+	gZPin.Pull 		= GPIO_PULLDOWN;
 	gZPin.Speed 	= GPIO_SPEED_HIGH;
 	HAL_GPIO_Init(ENCODER_Z_PORT, &gZPin);
 	/* EXTI interrupt init*/

@@ -41,8 +41,13 @@ TIM_HandleTypeDef Initialize_PWM(PWM_Out * PWMType)
 
 	configOC.OCMode 					= TIM_OCMODE_PWM1;
 	configOC.Pulse 						= 0;
+#ifdef TRAPZ
+	configOC.OCPolarity 				= TIM_OCPOLARITY_HIGH;
+	configOC.OCNPolarity 				= TIM_OCPOLARITY_HIGH;
+#else
 	configOC.OCPolarity 				= TIM_OCPOLARITY_LOW;
 	configOC.OCNPolarity 				= TIM_OCPOLARITY_HIGH;
+#endif
 	configOC.OCFastMode 				= TIM_OCFAST_DISABLE;
 	configOC.OCIdleState 				= TIM_OCIDLESTATE_RESET;
 	configOC.OCNIdleState 				= TIM_OCIDLESTATE_RESET;
@@ -54,7 +59,11 @@ TIM_HandleTypeDef Initialize_PWM(PWM_Out * PWMType)
 	sBreakDeadTimeConfig.OffStateRunMode 	= TIM_OSSR_DISABLE;
 	sBreakDeadTimeConfig.OffStateIDLEMode 	= TIM_OSSI_DISABLE;
 	sBreakDeadTimeConfig.LockLevel 			= TIM_LOCKLEVEL_OFF;
+#ifdef TRAPZ
+	sBreakDeadTimeConfig.DeadTime 			= 0;
+#else
 	sBreakDeadTimeConfig.DeadTime 			= DEAD_TIME / 10;
+#endif
 	sBreakDeadTimeConfig.BreakState 		= TIM_BREAK_DISABLE;
 	sBreakDeadTimeConfig.BreakPolarity		= TIM_BREAKPOLARITY_HIGH;
 	sBreakDeadTimeConfig.AutomaticOutput 	= TIM_AUTOMATICOUTPUT_DISABLE;

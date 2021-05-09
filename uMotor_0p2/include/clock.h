@@ -28,9 +28,7 @@ typedef struct ClockTimerus
 
 
 uint32_t Clock_GetMs(void);
-uint32_t Clock_GetMsLast(void);
 uint32_t Clock_GetUs(void);
-uint32_t Clock_GetUsLast(void);
 void Clock_StartTimer(ClockTimer *ct, uint32_t periodMs);
 void Clock_StartTimerUs(ClockTimerus *ct, uint32_t periodUs);
 int Clock_UpdateTimer(ClockTimer *ct);

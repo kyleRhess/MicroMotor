@@ -75,10 +75,12 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 		g_ADCValue3 = g_ADCValue3*FILT_K_1 + ((float)g_ADCBuffer[1])*FILT_K;
 	}
 #else
-	g_ADCValue1 = g_ADCBuffer[2];
+	g_ADCValue1 = (float)g_ADCBuffer[2];
 	g_ADCValue2 = (float)g_ADCBuffer[0];
 	g_ADCValue3 = (float)g_ADCBuffer[1];
 #endif
+
+	m_fSupplyVolt = ((float)g_ADCValue1 * ADC_SCALE) / ADC_SUPPLY_DIV;
 
 	m_fCurrentA = ((((float)g_ADCValue3 * ADC_SCALE) - ADC_ZERO) * ADC_RES);
 	m_fCurrentB = ((((float)g_ADCValue2 * ADC_SCALE) - ADC_ZERO) * ADC_RES);

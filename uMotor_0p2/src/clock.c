@@ -6,28 +6,17 @@
 // Background timer for keeping time (25kHz)
 static TIM_HandleTypeDef SamplingTimer 	= { .Instance = TIM9 };
 static volatile uint32_t timeElapUs 	= 0;
+static volatile uint32_t timeElapUsLast	= 0;
 static volatile uint32_t timeElapMs 	= 0;
-static volatile uint32_t timeElapUsLast = 0;
-static volatile uint32_t timeElapMsLast = 0;
 
 uint32_t Clock_GetMs(void)
 {
 	return timeElapMs;
 }
 
-uint32_t Clock_GetMsLast(void)
-{
-	return timeElapMsLast;
-}
-
 uint32_t Clock_GetUs(void)
 {
 	return timeElapUs;
-}
-
-uint32_t Clock_GetUsLast(void)
-{
-	return timeElapUsLast;
 }
 
 void Clock_StartTimer(ClockTimer *ct, uint32_t periodMs)
@@ -87,8 +76,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	// 1 ms tick
 	if((timeElapUs - timeElapUsLast) >= 1000)
 	{
-		timeElapMs = timeElapUs/1000;
-		timeElapMsLast = timeElapMs;
+		timeElapMs++;
 		timeElapUsLast = timeElapUs;
 	}
 }

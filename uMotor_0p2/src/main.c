@@ -88,8 +88,20 @@ int main(int argc, char* argv[])
 	InitPWMOutput();
 
 	// Start timer to count rotary encoder signals
-	Encoder_Init();
-	Encoder_ZInit();
+	//Encoder_Init();
+	//Encoder_ZInit();
+
+#ifdef TRAPZ
+	GPIO_InitTypeDef gLowPin;
+	gLowPin.Pin = PIN_LOW_A|PIN_LOW_B|PIN_LOW_C;
+	gLowPin.Mode = GPIO_MODE_OUTPUT_PP;
+	gLowPin.Pull = GPIO_PULLDOWN;
+	gLowPin.Speed = GPIO_SPEED_HIGH;
+	HAL_GPIO_Init(GPIOA, &gLowPin);
+	System_WritePin(GPIOA, PIN_LOW_A, GPIO_PIN_RESET);
+	System_WritePin(GPIOA, PIN_LOW_B, GPIO_PIN_RESET);
+	System_WritePin(GPIOA, PIN_LOW_C, GPIO_PIN_RESET);
+#endif
 
 #ifdef DEBUG_PIN
 	// Testing GPIO pin only
@@ -147,6 +159,11 @@ int main(int argc, char* argv[])
 			Signal_SetMotorState(MOTOR_MODE_REVERSING);
 		else
 			Signal_ClearMotorState(MOTOR_MODE_REVERSING);
+
+		if(Clock_GetMs() - Signal_GetHeartBeatMs() >= 500 && Clock_GetMs() != Signal_GetHeartBeatMs())
+			Signal_SetMotorState(MOTOR_MODE_NOHEART);
+
+
 
 		///////////////////////////////////////////////////////////
 

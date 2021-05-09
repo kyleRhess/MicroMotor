@@ -3,9 +3,11 @@
 
 //static int signal_currentEnableState 	= MOTOR_MODE_DISABLE;
 static float signal_currentPwmValue		= 0.0f;
+static float signal_currentTorque		= 0.0f;
 static float signal_currentPosition		= 0.0f;
 static float signal_PositionKp			= 0.0f;
 static float signal_PositionKi			= 0.0f;
+static uint32_t signal_heartBeatMs		= 0;
 
 static uint32_t signal_DriveState		= MOTOR_MODE_DEFAULT;
 
@@ -46,6 +48,7 @@ void Signal_SetMotorPWM(float speed)
 {
 	Signal_SetMotorState(MOTOR_MODE_SPEED);
 	Signal_ClearMotorState(MOTOR_MODE_POSITION);
+	Signal_ClearMotorState(MOTOR_MODE_TORQUE);
 	signal_currentPwmValue = speed;
 
 	if(signal_currentPwmValue < -100.0f)
@@ -60,10 +63,20 @@ void Signal_SetMotorPWM(float speed)
 #endif
 }
 
+void Signal_SetMotorTorque(float torque)
+{
+	Signal_SetMotorState(MOTOR_MODE_TORQUE);
+	Signal_ClearMotorState(MOTOR_MODE_POSITION);
+	Signal_ClearMotorState(MOTOR_MODE_SPEED);
+
+	signal_currentTorque = torque;
+}
+
 void Signal_SetMotorPos(float position)
 {
 	Signal_SetMotorState(MOTOR_MODE_POSITION);
 	Signal_ClearMotorState(MOTOR_MODE_SPEED);
+	Signal_ClearMotorState(MOTOR_MODE_TORQUE);
 
 	signal_currentPosition = position;
 }
@@ -76,6 +89,11 @@ float Signal_GetMotorPWM(void)
 float Signal_GetMotorPos(void)
 {
 	return signal_currentPosition;
+}
+
+float Signal_GetMotorTorque(void)
+{
+	return signal_currentTorque;
 }
 
 void Signal_SetMotorPosKp(float kp)
@@ -96,4 +114,14 @@ float Signal_GetMotorPosKp()
 float Signal_GetMotorPosKi()
 {
 	return signal_PositionKi;
+}
+
+void Signal_SetHeartBeatMs(uint32_t millis)
+{
+	signal_heartBeatMs = millis;
+}
+
+uint32_t Signal_GetHeartBeatMs(void)
+{
+	return signal_heartBeatMs;
 }

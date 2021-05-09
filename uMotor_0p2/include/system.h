@@ -44,6 +44,11 @@
 #define ADC_BAT_PORT		GPIOC
 #define ADC_BAT_PIN			GPIO_PIN_5
 
+#define PIN_LOW_A			GPIO_PIN_8
+#define PIN_LOW_B			GPIO_PIN_9
+#define PIN_LOW_C			GPIO_PIN_10
+
+
 void System_WritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
 uint8_t System_ReadPin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
 float System_mapVal(float x, float in_min, float in_max, float out_min, float out_max);

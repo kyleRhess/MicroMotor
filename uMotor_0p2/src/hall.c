@@ -31,80 +31,124 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 #if 1
 	HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 
-	if(GPIO_Pin == ENCODER_Z_PIN)
+	// nop's give a slight delay
+	__NOP();
+	a_state = READ_H(HALL_A_PIN) && HALL_A_PIN;
+	b_state = READ_H(HALL_B_PIN) && HALL_B_PIN;
+	c_state = READ_H(HALL_C_PIN) && HALL_C_PIN;
+
+	static int countt = 0;
+	countt++;
+	hall_steps++;
+
+#ifdef TRAPZ
+	float pwmval = m_fTrapzPwmVal;
+	if(a_state == 1 && b_state == 0 && c_state == 0)
 	{
-		if(Signal_GetMotorState() & MOTOR_MODE_HOMING)
-		{
-			Signal_ClearMotorState(MOTOR_MODE_ENABLE);
-			Encoder_Reset();
-//			m_fHomeOffset = m_fMechAngle;
-			Signal_SetMotorPos(0.0f);
-			FOC_Init();
-			Signal_ClearMotorState(MOTOR_MODE_HOMING);
-			Signal_ClearMotorState(MOTOR_MODE_POSITION);
-			Signal_ClearMotorState(MOTOR_MODE_SPEED);
-		}
+		m_fRotorThetaInit = 0.0f;
+
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_1, 	pwmval);
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_2, 	0.0f);
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_3, 	0.0f);
+		System_WritePin(GPIOA, 			PIN_LOW_A, 		GPIO_PIN_RESET);
+		System_WritePin(GPIOA, 			PIN_LOW_B, 		GPIO_PIN_RESET);
+		System_WritePin(GPIOA, 			PIN_LOW_C, 		GPIO_PIN_SET);
+	}
+	else if(a_state == 1 && b_state == 1 && c_state == 0)
+	{
+		m_fRotorThetaInit = 60.0f;
+
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_1, 	0.0f);
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_2, 	pwmval);
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_3, 	0.0f);
+		System_WritePin(GPIOA, 			PIN_LOW_A, 		GPIO_PIN_RESET);
+		System_WritePin(GPIOA, 			PIN_LOW_B, 		GPIO_PIN_RESET);
+		System_WritePin(GPIOA, 			PIN_LOW_C, 		GPIO_PIN_SET);
+	}
+	else if(a_state == 0 && b_state == 1 && c_state == 0)
+	{
+		m_fRotorThetaInit = 120.0f;
+
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_1, 	0.0f);
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_2, 	pwmval);
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_3, 	0.0f);
+		System_WritePin(GPIOA, 			PIN_LOW_A, 		GPIO_PIN_SET);
+		System_WritePin(GPIOA, 			PIN_LOW_B, 		GPIO_PIN_RESET);
+		System_WritePin(GPIOA, 			PIN_LOW_C, 		GPIO_PIN_RESET);
+	}
+	else if(a_state == 0 && b_state == 1 && c_state == 1)
+	{
+		m_fRotorThetaInit = 180.0f;
+
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_1, 	0.0f);
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_2, 	0.0f);
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_3, 	pwmval);
+		System_WritePin(GPIOA, 			PIN_LOW_A, 		GPIO_PIN_SET);
+		System_WritePin(GPIOA, 			PIN_LOW_B, 		GPIO_PIN_RESET);
+		System_WritePin(GPIOA, 			PIN_LOW_C, 		GPIO_PIN_RESET);
+	}
+	else if(a_state == 0 && b_state == 0 && c_state == 1)
+	{
+		m_fRotorThetaInit = 240.0f;
+
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_1, 	0.0f);
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_2, 	0.0f);
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_3, 	pwmval);
+		System_WritePin(GPIOA, 			PIN_LOW_A, 		GPIO_PIN_RESET);
+		System_WritePin(GPIOA, 			PIN_LOW_B, 		GPIO_PIN_SET);
+		System_WritePin(GPIOA, 			PIN_LOW_C, 		GPIO_PIN_RESET);
+	}
+	else if(a_state == 1 && b_state == 0 && c_state == 1)
+	{
+		m_fRotorThetaInit = 300.0f;
+
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_1, 	pwmval);
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_2, 	0.0f);
+		PWM_Set_Duty(&PWMtimer.timer, 	TIM_CHANNEL_3, 	0.0f);
+		System_WritePin(GPIOA, 			PIN_LOW_A, 		GPIO_PIN_RESET);
+		System_WritePin(GPIOA, 			PIN_LOW_B, 		GPIO_PIN_SET);
+		System_WritePin(GPIOA, 			PIN_LOW_C, 		GPIO_PIN_RESET);
+	}
+#else
+	if(a_state == 1 && b_state == 0 && c_state == 0)
+	{
+		m_fRotorThetaInit = 0.0f;
+	}
+	else if(a_state == 1 && b_state == 1 && c_state == 0)
+	{
+		m_fRotorThetaInit = 60.0f;
+	}
+	else if(a_state == 0 && b_state == 1 && c_state == 0)
+	{
+		m_fRotorThetaInit = 120.0f;
+	}
+	else if(a_state == 0 && b_state == 1 && c_state == 1)
+	{
+		m_fRotorThetaInit = 180.0f;
+	}
+	else if(a_state == 0 && b_state == 0 && c_state == 1)
+	{
+		m_fRotorThetaInit = 240.0f;
+	}
+	else if(a_state == 1 && b_state == 0 && c_state == 1)
+	{
+		m_fRotorThetaInit = 300.0f;
+	}
+#endif
+
+	if((rotor_theta_init_L - m_fRotorThetaInit) == 60 || (rotor_theta_init_L - m_fRotorThetaInit) == -300)
+	{
+		reversing = 1;
 	}
 	else
 	{
-	//	switch (GPIO_Pin)
-	//	{
-	//		case HALL_A_PIN:
-	//			hall_monitor(HALL_A, READ_H(HALL_A_PIN) && HALL_A_PIN);
-	//			break;
-	//		case HALL_B_PIN:
-	//			hall_monitor(HALL_B, READ_H(HALL_B_PIN) && HALL_B_PIN);
-	//			break;
-	//		case HALL_C_PIN:
-	//			hall_monitor(HALL_C, READ_H(HALL_C_PIN) && HALL_C_PIN);
-	//			break;
-	//		default:
-	//			break;
-	//	}
-
-		// nop's give a slight delay
-		__NOP();
-		a_state = READ_H(HALL_A_PIN) && HALL_A_PIN;
-		b_state = READ_H(HALL_B_PIN) && HALL_B_PIN;
-		c_state = READ_H(HALL_C_PIN) && HALL_C_PIN;
-
-		float m_fRotorThetaInitNow = 0;
-		if(a_state == 1 && b_state == 0 && c_state == 0)
-		{
-			m_fRotorThetaInitNow = 0.0f;
-		}
-		else if(a_state == 1 && b_state == 1 && c_state == 0)
-		{
-			m_fRotorThetaInitNow = 60.0f;
-		}
-		else if(a_state == 0 && b_state == 1 && c_state == 0)
-		{
-			m_fRotorThetaInitNow = 120.0f;
-		}
-		else if(a_state == 0 && b_state == 1 && c_state == 1)
-		{
-			m_fRotorThetaInitNow = 180.0f;
-		}
-		else if(a_state == 0 && b_state == 0 && c_state == 1)
-		{
-			m_fRotorThetaInitNow = 240.0f;
-		}
-		else if(a_state == 1 && b_state == 0 && c_state == 1)
-		{
-			m_fRotorThetaInitNow = 300.0f;
-		}
-
-		if(m_fRotorThetaInitNow == m_fRotorThetaInit)
-		{
-//			if((rotor_theta_init_L - m_fRotorThetaInit) == 60 || (rotor_theta_init_L - m_fRotorThetaInit) == -300)
-//				reversing = 1;
-//			else
-//				reversing = 0;
-//			rotor_theta_init_L = m_fRotorThetaInit;
-			mechAngleoffset = m_fMechAngle;
-		}
-
+		reversing = 0;
 	}
+
+	rotor_theta_init_L 	= m_fRotorThetaInit;
+	m_fMechAngle 		= 0;
+	mechAngleoffset 	= -((float)Encoder_GetAngle() * 4.0f);
+
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 #endif
 }
@@ -124,7 +168,11 @@ void Hall_InputInit(void)
 
 void Hall_ComputeRPM(float timeStep)
 {
-	hall_currentRpmValue = hall_currentRpmValue*0.6f + ((((float)Hall_GetSteps() / 24.0f) / timeStep) * 60.0f)*0.4f;
+#define rpmK	0.9f
+	if(reversing)
+		hall_currentRpmValue = hall_currentRpmValue*rpmK + ((((float)Hall_GetSteps() / 144.0f) / timeStep) * -60.0f)*(1.0f-rpmK);
+	else
+		hall_currentRpmValue = hall_currentRpmValue*rpmK + ((((float)Hall_GetSteps() / 144.0f) / timeStep) * 60.0f)*(1.0f-rpmK);
 	Hall_SetSteps(0);
 }
 

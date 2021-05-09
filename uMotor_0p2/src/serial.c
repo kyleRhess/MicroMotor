@@ -52,10 +52,11 @@ static uint32_t proc_command(uint32_t command)
 			break;
 		case CMD_MOTOR_QUERY:
 			rc = command;
-			txCmdData.pwmValue 		= m_fSpeedFilt;//Hall_GetRPM();// Signal_GetMotorPWM();
+			txCmdData.pwmValue 		= txCmdData.pwmValue*0.9f + fabsf(m_fCurrentA)*0.1f;//m_fSpeedFilt;//Hall_GetRPM();// Signal_GetMotorPWM();
 			txCmdData.driveMode 	= Signal_GetMotorState();
-			txCmdData.rpmValue 		= (Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/125.0f;//Hall_GetRPM();
+			txCmdData.rpmValue 		= Hall_GetRPM();//(Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/125.0f;//Hall_GetRPM();
 			txCmdData.encoderCnt 	= Clock_GetUs();
+			Signal_SetHeartBeatMs(Clock_GetMs());
 			break;
 		case CMD_MOTOR_ENABLE:
 			rc = command;
@@ -88,6 +89,11 @@ static uint32_t proc_command(uint32_t command)
 			memcpy(&rxCmdData, &uartRxBuff[1+4], sizeof(rxCmdData));
 			Signal_SetMotorPosKp(rxCmdData.posKp);
 			Signal_SetMotorPosKi(rxCmdData.posKi);
+			break;
+		case CMD_MOTOR_HEARTBEAT:
+			rc = command;
+			memcpy(&rxCmdData, &uartRxBuff[1+4], sizeof(rxCmdData));
+			Signal_SetHeartBeatMs(Clock_GetMs());
 			break;
 		default:
 			break;
@@ -197,12 +203,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	// start, data...data, checksum
 	if(uartRxBuff[0] == START_CHAR)
 	{
+		// Compute 32-bit CRC
 		crc32(&uartRxBuff[0], RX_BUFF_SZ-4, &thiscrc);
+
+		// Get CRC from message
 		rxCrc = (uartRxBuff[RX_BUFF_SZ - 4] << 24) |
 				(uartRxBuff[RX_BUFF_SZ - 3] << 16) |
 				(uartRxBuff[RX_BUFF_SZ - 2] << 8) |
 				(uartRxBuff[RX_BUFF_SZ - 1] << 0);
 
+		// Compare CRC's
 		if(thiscrc == rxCrc && rxCrc != 0)
 		{
 			uint32_t command = 0;

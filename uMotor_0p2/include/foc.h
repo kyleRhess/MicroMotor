@@ -20,14 +20,14 @@
 
 #define DPS_TO_RPM(xx)		((xx) / 6.0f)
 #define MAX_SPEED			2000.0f			// Maximum RPM
-#define MAX_CURRENT			3.0f			// Maximum current per phase
+#define MAX_CURRENT			10.0f			// Maximum current per phase
 
 #define Q_WIND		        1.0f
 #define D_WIND		        1.0f
 #define SPEED_WIND	        (MAX_CURRENT * 0.8f) // amps
 #define POS_WIND	        8000.0f // deg/s
-#define Kp			        0.190f
-#define Ki			        60.74399996f
+#define Kp			        0.050f
+#define Ki			        10.74399996f
 #define PID_FREQ	        4000.0f	// Hz
 
 
@@ -52,6 +52,7 @@ extern float m_fSpeedFilt;
 extern double velest;
 extern double velintegrator;
 extern float m_fRotorTheta;
+extern float m_fSupplyVolt;
 
 extern float rotor_theta_init_L;
 extern int reversing;
@@ -60,11 +61,14 @@ extern int b_state;
 extern int c_state;
 extern double mechAngleoffset;
 
+extern float m_fTrapzPwmVal;
+
 
 extern PID_Controller pi_axis_d;
 extern PID_Controller pi_axis_q;
 extern PID_Controller pi_speed;
-extern PID_Controller pi_pos;
+extern PID_Controller pi_pos;;
+extern PID_Controller pi_speed_trapz;
 
 
 
