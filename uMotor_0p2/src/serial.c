@@ -43,41 +43,46 @@ static uint32_t proc_command(uint32_t command)
 	{
 		case CMD_MOTOR_RESET:
 			rc = command;
-			Encoder_Reset();
-			FOC_Init();
-			Signal_SetMotorPos(0.0f);
-			Signal_ClearMotorState(MOTOR_MODE_ENABLE);
-			Signal_ClearMotorState(MOTOR_MODE_OVERCURRENT);
-			Signal_ClearMotorState(MOTOR_MODE_OVERSPEED);
+			Signal_ResetMotor();
 			break;
 		case CMD_MOTOR_QUERY:
 			rc = command;
-			txCmdData.pwmValue 		= txCmdData.pwmValue*0.9f + fabsf(m_fCurrentA)*0.1f;//m_fSpeedFilt;//Hall_GetRPM();// Signal_GetMotorPWM();
+			txCmdData.torqueValue 	= txCmdData.torqueValue*0.9f + fabsf(m_fCurrentA)*0.1f;
 			txCmdData.driveMode 	= Signal_GetMotorState();
-			txCmdData.rpmValue 		= Hall_GetRPM();//(Signal_GetMotorPWM()*Signal_GetMotorPWM()*Signal_GetMotorPWM())/125.0f;//Hall_GetRPM();
-			txCmdData.encoderCnt 	= Clock_GetUs();
+			txCmdData.speedValue 	= Hall_GetRPM();
+			txCmdData.millis 		= Clock_GetMs();
 			Signal_SetHeartBeatMs(Clock_GetMs());
 			break;
 		case CMD_MOTOR_ENABLE:
 			rc = command;
+			Signal_ResetMotor();
 			if(!(Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT) &&
 			   !(Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT))
 			{
-				Signal_SetMotorState(MOTOR_MODE_ENABLE);
+				Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_ENABLE);
 			}
 			break;
 		case CMD_MOTOR_DISABLE:
 			rc = command;
 			Signal_ClearMotorState(MOTOR_MODE_ENABLE);
 			break;
-		case CMD_MOTOR_PWM:
+		case CMD_MOTOR_SPEED:
 			rc = command;
 			memcpy(&rxCmdData, &uartRxBuff[1+4], sizeof(rxCmdData));
-			Signal_SetMotorPWM(rxCmdData.pwmValue);
+			Signal_SetMotorTorque(rxCmdData.torqueValue);
 			break;
 		case CMD_MOTOR_HOME:
 			rc = command;
-			Signal_SetMotorState(MOTOR_MODE_HOMING);
+//			Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_HOMING);
+			if(Signal_GetMotorState() & MOTOR_MODE_CRUISING)
+			{
+				Signal_ClearMotorState(MOTOR_MODE_CRUISING);
+			}
+			else
+			{
+				Signal_SetMotorSpeed(Hall_GetRPM());
+				Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_CRUISING);
+			}
 			break;
 		case CMD_MOTOR_POSITION:
 			rc = command;
@@ -87,13 +92,23 @@ static uint32_t proc_command(uint32_t command)
 		case CMD_MOTOR_PARMS:
 			rc = command;
 			memcpy(&rxCmdData, &uartRxBuff[1+4], sizeof(rxCmdData));
-			Signal_SetMotorPosKp(rxCmdData.posKp);
-			Signal_SetMotorPosKi(rxCmdData.posKi);
+			Signal_SetParam(rxCmdData.parmID, rxCmdData.parmValue);
 			break;
 		case CMD_MOTOR_HEARTBEAT:
 			rc = command;
-			memcpy(&rxCmdData, &uartRxBuff[1+4], sizeof(rxCmdData));
 			Signal_SetHeartBeatMs(Clock_GetMs());
+			break;
+		case CMD_MOTOR_CRUISE:
+			rc = command;
+			if(Signal_GetMotorState() & MOTOR_MODE_CRUISING)
+			{
+				Signal_ClearMotorState(MOTOR_MODE_CRUISING);
+			}
+			else
+			{
+				Signal_SetMotorSpeed(Hall_GetRPM());
+				Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_CRUISING);
+			}
 			break;
 		default:
 			break;

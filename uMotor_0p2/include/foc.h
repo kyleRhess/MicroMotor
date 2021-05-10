@@ -19,12 +19,12 @@
 #define PI_2				1.570796327f    // pi / 2
 
 #define DPS_TO_RPM(xx)		((xx) / 6.0f)
-#define MAX_SPEED			2000.0f			// Maximum RPM
-#define MAX_CURRENT			10.0f			// Maximum current per phase
+#define MAX_SPEED			500.0f			// Maximum speed (RPM)
+#define MAX_CURRENT			10.0f			// Maximum current per phase (A)
 
 #define Q_WIND		        1.0f
 #define D_WIND		        1.0f
-#define SPEED_WIND	        (MAX_CURRENT * 0.8f) // amps
+#define SPEED_WIND	        (MAX_CURRENT * 0.75f) // amps
 #define POS_WIND	        8000.0f // deg/s
 #define Kp			        0.050f
 #define Ki			        10.74399996f
@@ -63,6 +63,7 @@ extern double mechAngleoffset;
 
 extern float m_fTrapzPwmVal;
 
+extern float systemParams[256];
 
 extern PID_Controller pi_axis_d;
 extern PID_Controller pi_axis_q;

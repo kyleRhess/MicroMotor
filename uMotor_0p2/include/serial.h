@@ -9,8 +9,8 @@
 
 #define MSG_RATE_HZ(xxx) 		(SAMPLE_RATE / xxx)
 
-#define RX_BUFF_SZ 				37
-#define TX_BUFF_SZ 				37
+#define RX_BUFF_SZ 				34
+#define TX_BUFF_SZ 				34
 
 #define START_CHAR 				0xAA
 
@@ -20,7 +20,7 @@
 
 #define CMD_MOTOR_ENABLE		0x00000001
 #define CMD_MOTOR_DISABLE		0x00000002
-#define CMD_MOTOR_PWM			0x00000004
+#define CMD_MOTOR_SPEED			0x00000004
 #define CMD_MOTOR_MODE			0x00000008
 #define CMD_MOTOR_QUERY			0x00000010
 #define CMD_MOTOR_RESET			0x00000020
@@ -28,26 +28,18 @@
 #define CMD_MOTOR_PARMS			0x00000080
 #define CMD_MOTOR_HOME			0x00000100
 #define CMD_MOTOR_HEARTBEAT		0x00000200
+#define CMD_MOTOR_CRUISE		0x00000400
 
-typedef enum
-{
-	STATUS_ENABLE = 0,
-	STATUS_RPM,
-	STATUS_PWM,
-	STATUS_ODR,
-	STATUS_PID,
-	STATUS_NUM
-} StatusNum;
 
 typedef struct DataFields
 {
-	float		pwmValue; 	// 1
-	uint32_t	driveMode;	// 2
-	float		rpmValue;	// 3
-	uint32_t	encoderCnt;	// 4
-	float		posValue;	// 5
-	float		posKp;	// 6
-	float		posKi;	// 7
+	float		torqueValue; 	// 1
+	float		speedValue;		// 2
+	float		posValue;		// 3
+	uint32_t	driveMode;		// 4
+	uint32_t	millis;			// 5
+	uint8_t		parmID;			// 6
+	float		parmValue;		// 7
 } __attribute__((__packed__)) DataFields;
 
 int Serial_InitPort(uint32_t baudrate, uint32_t stopbits, uint32_t datasize, uint32_t parity);

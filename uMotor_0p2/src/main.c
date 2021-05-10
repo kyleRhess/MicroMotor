@@ -141,8 +141,9 @@ int main(int argc, char* argv[])
 	{
 		// TODO: Move Signal monitor elsewhere
 		///////////////////////////////////////////////////////////
-		if((Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT) ||
-		   (Signal_GetMotorState() & MOTOR_MODE_OVERSPEED))
+		if((Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT) 	||
+		   (Signal_GetMotorState() & MOTOR_MODE_OVERSPEED)		||
+		   (Signal_GetMotorState() & MOTOR_MODE_NOHEART))
 		{
 			Signal_ClearMotorState(MOTOR_MODE_ENABLE);
 			System_WritePin(GPIOB, GPIO_DIS_PIN, 1);
@@ -156,28 +157,15 @@ int main(int argc, char* argv[])
 		}
 
 		if(m_fSpeed < 0)
-			Signal_SetMotorState(MOTOR_MODE_REVERSING);
+			Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_REVERSING);
 		else
 			Signal_ClearMotorState(MOTOR_MODE_REVERSING);
 
 		if(Clock_GetMs() - Signal_GetHeartBeatMs() >= 500 && Clock_GetMs() != Signal_GetHeartBeatMs())
-			Signal_SetMotorState(MOTOR_MODE_NOHEART);
+			Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_NOHEART);
+		else
+			Signal_ClearMotorState(MOTOR_MODE_NOHEART);
 
-
-
-		///////////////////////////////////////////////////////////
-
-
-//		pi_speed.kP = Signal_GetMotorPosKp()/10.0f;
-//		pi_speed.kI = Signal_GetMotorPosKi()/10.0f;
-
-//		static float lastSP = 0;
-//		static float lasttime = 0;
-//		pi_pos.windupMax 		= Signal_GetMotorPosKp()*12000.0f;
-//		pi_pos.windupMin 		= -Signal_GetMotorPosKp()*12000.0f;
-//		pi_pos.setPoint = lastSP + (Clock_GetTimeS() - lasttime) * Signal_GetMotorPos()*10.0f;
-//		lasttime = Clock_GetTimeS();
-//		lastSP = pi_pos.setPoint;
 	}
 }
 

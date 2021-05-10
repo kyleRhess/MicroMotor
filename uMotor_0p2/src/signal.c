@@ -26,9 +26,19 @@ void Signal_Init(void)
 	System_WritePin(GPIOB, GPIO_DIS_PIN, GPIO_PIN_SET);
 }
 
+void Signal_ResetMotor(void)
+{
+	Encoder_Reset();
+	Signal_SetMotorTorque(0.0f);
+	Signal_SetMotorSpeed(0.0f);
+	Signal_SetMotorPos(0.0f);
+	Signal_SetMotorState(MOTOR_MODE_DEFAULT);
+	FOC_Init();
+}
+
 void Signal_SetMotorState(uint32_t state)
 {
-	signal_DriveState |= state;
+	signal_DriveState = state;
 }
 
 void Signal_ClearMotorState(uint32_t state)
@@ -44,44 +54,42 @@ uint32_t Signal_GetMotorState()
 	return signal_DriveState;
 }
 
-void Signal_SetMotorPWM(float speed)
+void Signal_SetMotorSpeed(float speed)
 {
-	Signal_SetMotorState(MOTOR_MODE_SPEED);
+	Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_SPEED);
 	Signal_ClearMotorState(MOTOR_MODE_POSITION);
 	Signal_ClearMotorState(MOTOR_MODE_TORQUE);
 	signal_currentPwmValue = speed;
-
-	if(signal_currentPwmValue < -100.0f)
-		signal_currentPwmValue = -100.0f;
-	if(signal_currentPwmValue >  100.0f)
-		signal_currentPwmValue =  100.0f;
-#ifdef BI_POLAR
-	PWM_adjust_DutyCycle(((signal_currentPwmValue*0.5f) + 50.0f));
-#else
-
-	//PWM_adjust_DutyCycle(fabsf(signal_currentPwmValue));
-#endif
 }
 
 void Signal_SetMotorTorque(float torque)
 {
-	Signal_SetMotorState(MOTOR_MODE_TORQUE);
+	Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_TORQUE);
 	Signal_ClearMotorState(MOTOR_MODE_POSITION);
 	Signal_ClearMotorState(MOTOR_MODE_SPEED);
 
 	signal_currentTorque = torque;
+	if(signal_currentTorque < -100.0f)
+		signal_currentTorque = -100.0f;
+	if(signal_currentTorque >  100.0f)
+		signal_currentTorque =  100.0f;
 }
 
 void Signal_SetMotorPos(float position)
 {
-	Signal_SetMotorState(MOTOR_MODE_POSITION);
+	Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_POSITION);
 	Signal_ClearMotorState(MOTOR_MODE_SPEED);
 	Signal_ClearMotorState(MOTOR_MODE_TORQUE);
 
 	signal_currentPosition = position;
 }
 
-float Signal_GetMotorPWM(void)
+void Signal_SetParam(uint8_t paramID, float paramValue)
+{
+	systemParams[paramID] = paramValue;
+}
+
+float Signal_GetMotorSpeed(void)
 {
 	return signal_currentPwmValue;
 }

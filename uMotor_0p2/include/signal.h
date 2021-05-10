@@ -13,8 +13,8 @@
 #define MOTOR_MODE_POSITION	  	0x00000040
 #define MOTOR_MODE_NOHEART	    0x00000080
 #define MOTOR_MODE_TORQUE	   	0x00000100
+#define MOTOR_MODE_CRUISING	   	0x00000200
 
-#define MOTOR_MODE_TBD5	        0x00000200
 #define MOTOR_MODE_TBD6	        0x00000400
 #define MOTOR_MODE_TBD7	        0x00000800
 #define MOTOR_MODE_TBD8	        0x00001000
@@ -35,17 +35,15 @@
 #define MOTOR_MODE_TBD23        0x08000000
 
 void Signal_Init(void);
+void Signal_ResetMotor(void);
 void Signal_SetMotorState(uint32_t state);
 void Signal_ClearMotorState(uint32_t state);
 uint32_t Signal_GetMotorState();
-void Signal_SetMotorPWM(float speed);
+void Signal_SetMotorSpeed(float speed);
 void Signal_SetMotorTorque(float torque);
 void Signal_SetMotorPos(float position);
-void Signal_SetMotorPosKp(float kp);
-void Signal_SetMotorPosKi(float ki);
-float Signal_GetMotorPosKp();
-float Signal_GetMotorPosKi();
-float Signal_GetMotorPWM(void);
+void Signal_SetParam(uint8_t paramID, float paramValue);
+float Signal_GetMotorSpeed(void);
 float Signal_GetMotorPos(void);
 float Signal_GetMotorTorque(void);
 void Signal_SetHeartBeatMs(uint32_t millis);

@@ -91,7 +91,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	   m_fCurrentB > MAX_CURRENT || m_fCurrentB < -MAX_CURRENT ||
 	   m_fCurrentC > MAX_CURRENT || m_fCurrentC < -MAX_CURRENT)
 	{
-		Signal_SetMotorState(MOTOR_MODE_OVERCURRENT);
+		Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_OVERCURRENT);
 	}
 
 	Run_SVM();
