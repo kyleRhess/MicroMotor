@@ -31,6 +31,8 @@ uint32_t Clock_GetMs(void);
 uint32_t Clock_GetUs(void);
 void Clock_StartTimer(ClockTimer *ct, uint32_t periodMs);
 void Clock_StartTimerUs(ClockTimerus *ct, uint32_t periodUs);
+void Clock_StopTimer(ClockTimer *ct);
+void Clock_StopTimerUs(ClockTimerus *ct);
 int Clock_UpdateTimer(ClockTimer *ct);
 int Clock_UpdateTimerUs(ClockTimerus *ct);
 

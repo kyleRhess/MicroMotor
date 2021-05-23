@@ -69,8 +69,8 @@ void Signal_SetMotorTorque(float torque)
 	Signal_ClearMotorState(MOTOR_MODE_SPEED);
 
 	signal_currentTorque = torque;
-	if(signal_currentTorque < -100.0f)
-		signal_currentTorque = -100.0f;
+	if(signal_currentTorque < -0.0f)
+		signal_currentTorque = 0.0f;
 	if(signal_currentTorque >  100.0f)
 		signal_currentTorque =  100.0f;
 }

@@ -41,12 +41,16 @@
 #define ADC_PORT			GPIOA
 #define ADC_A_PIN			GPIO_PIN_3
 #define ADC_B_PIN			GPIO_PIN_2
+#define ADC_THROT_PIN		GPIO_PIN_0
 #define ADC_BAT_PORT		GPIOC
 #define ADC_BAT_PIN			GPIO_PIN_5
 
 #define PIN_LOW_A			GPIO_PIN_8
 #define PIN_LOW_B			GPIO_PIN_9
 #define PIN_LOW_C			GPIO_PIN_10
+
+#define POWER_SW_PORT		ENCODER_Z_PORT
+#define POWER_SW_PIN		ENCODER_Z_PIN
 
 
 void System_WritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);

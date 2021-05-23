@@ -48,6 +48,7 @@ static ClockTimerus speedTimerTrapz;
 // =====================================
 
 float m_fRotorThetaInit 			= 0;
+float m_fRotorThetaNext 			= 0;
 double m_fMechAngle					= 0.0f;
 double m_fHomeOffset				= 0.0f;
 double m_fMechAngleLast				= 0.0f;
@@ -60,6 +61,8 @@ float m_fSpeed						= 0;
 float m_fRotorTheta					= 0.0f;
 float m_fSpeedFilt					= 0;
 float m_fSupplyVolt					= 0;
+float m_fSupplyVoltInit				= 0;
+float m_fThrotVolt					= 0;
 
 float rotor_theta_init_L 			= 0;
 int reversing 						= 0;
@@ -94,6 +97,13 @@ typedef struct FloatField
 } __attribute__((__packed__)) FloatField;
 static uint8_t uartTxBuff[128];
 static FloatField txCmdData;
+
+
+typedef struct lastvals
+{
+	float		angle;		// 11
+	float		m_fMechAngle;			// 12
+} lastvals;
 
 #ifdef FAST_TRIG
 static float sin_fast(float x);
@@ -136,6 +146,7 @@ void FOC_Init(void)
 	b_state 				= 0;
 	c_state 				= 0;
 	m_fRotorThetaInit 		= 0;
+	m_fRotorThetaNext 		= 0;
 	m_fMechAngle			= 0.0f;
 	m_fCurrentA 			= 0.0f;
 	m_fCurrentB 			= 0.0f;
@@ -227,21 +238,22 @@ void FOC_Init(void)
 		m_fRotorThetaInit = 300.0f;
 	}
 
-	rotor_theta_init_L = m_fRotorThetaInit;
+	rotor_theta_init_L 	= m_fRotorThetaInit;
+	m_fRotorThetaNext 	= m_fRotorThetaInit;
 
 	rotorInit = m_fRotorThetaInit;
 
-	Clock_StartTimerUs(&speedTimer, 40000);
+	Clock_StartTimerUs(&speedTimer, 4000);
 	Clock_StartTimerUs(&speedTimerTrapz, 40000);
 }
 
 void Run_SVM(void)
 {
-#if 0
+#if 1
 	static float setPoint = 0;
 	static int div = 0;
 	div++;
-	if(div >= 2 && Clock_GetMsLast() > 10000)
+	if(div >= 5 && Clock_GetMs() > 100)
 	{
 		div = 0;
 
@@ -258,13 +270,26 @@ void Run_SVM(void)
 		txCmdData.torqueReq 	= pi_axis_q.setPoint;
 		txCmdData.torqueValue 	= m_fIq;
 
-		memcpy(&uartTxBuff[0], &txCmdData, sizeof(txCmdData));
-		Serial_TxData2(uartTxBuff, sizeof(txCmdData));
 
+		char str[128] = {0};
+		sprintf(str, "%.3f,%.2f,%.2f,%.2f,%.2f,%08X,%.1f\n",
+				m_fRotorTheta,
+				m_fIq,
+				pi_axis_q.setPoint,
+				m_fCurrentA,
+				m_fSupplyVolt,
+				(unsigned int)Signal_GetMotorState(),
+				Hall_GetRPM());
 
-		Signal_SetMotorState(MOTOR_MODE_ENABLE);
-//		Signal_SetMotorState(MOTOR_MODE_POSITION);
-		Signal_SetMotorState(MOTOR_MODE_SPEED);
+		uint8_t chars = 0;
+		for (chars = 0; chars < sizeof(str)/sizeof(str[0]); ++chars)
+		{
+			if(str[chars] == '\n')
+				break;
+		}
+
+		memcpy(&uartTxBuff[0], &str, chars+1);
+		Serial_TxData2(uartTxBuff, chars+1);
 
 
 //		static uint32_t lllsl = 0;
@@ -289,13 +314,11 @@ void Run_SVM(void)
 //			}
 //			lllsl = Clock_GetMsLast();
 //		}
-
-		setPoint = sinf(((float)Clock_GetMsLast()/1000.0f) * PI * (20.0f + ((float)Clock_GetMsLast()/1000.0f)));
 	}
 #endif
 
-	pi_speed_trapz.kP = Signal_GetMotorPosKp() / 5.0f;
-	pi_speed_trapz.kI = Signal_GetMotorPosKi() / 10.0f;
+//	pi_speed_trapz.kP = Signal_GetMotorPosKp() / 5.0f;
+//	pi_speed_trapz.kI = Signal_GetMotorPosKi() / 10.0f;
 
 	// Get CPU cycles between FOC computations
 	static unsigned long t1 = 0;
@@ -307,10 +330,63 @@ void Run_SVM(void)
 	m_fDeltaT = ((float)diff / (float)100e+06);
 
 	// Get rotor angle
-	m_fMechAngle		+= (Hall_GetRPM()*6.0f)*m_fDeltaT;
+	if(Hall_GetRPM() > 20.0f)
+		m_fMechAngle += (Hall_GetRPM()*6.0f)*m_fDeltaT;
+	else
+		m_fMechAngle = 0.0f;
+//	m_fMechAngle 		= 0;
+
+
+//	if(m_fRotorThetaNext > m_fRotorThetaInit)
+//	{
+//		if (m_fRotorThetaNext - m_fRotorThetaInit > 61.0f)
+//		{
+//			m_fRotorThetaInit += 99.0f;
+//		}
+//		else
+//		{
+//			m_fRotorThetaInit += 10.0f;
+//		}
+//	}
+//	else if (m_fRotorThetaNext < m_fRotorThetaInit)
+//	{
+//		if (m_fRotorThetaNext - m_fRotorThetaInit < -61.0f)
+//		{
+//			m_fRotorThetaInit -= 99.0f;
+//		}
+//		else
+//		{
+//			m_fRotorThetaInit -= 10.0f;
+//		}
+//	}
+
+//	if((Hall_GetRPM()*6.0f) > 1000)
+//	{
+//		System_WritePin(GPIOB, GPIO_DIS_PIN, 1);
+//		m_fRotorTheta = 0;
+//	}
+
+	if(m_fRotorThetaInit != m_fRotorThetaNext)
+	{
+		m_fMechAngle = 0.0f;
+		m_fRotorThetaInit = m_fRotorThetaNext;
+	}
+
+	if(m_fMechAngle > 60.0f)
+		m_fMechAngle = 60.0f;
+	if(m_fMechAngle < -60.0f)
+		m_fMechAngle = -60.0f;
+
 
 	// Convert rotor angle to electrical angle
-	m_fRotorTheta  	= m_fRotorThetaInit + (float)(m_fMechAngle - 0) - 90.0f;
+	m_fRotorTheta  	= m_fRotorThetaInit + (float)(m_fMechAngle*24.0f - 0) - 90.0f;
+
+
+
+	if(m_fRotorTheta > 360.0f)
+		m_fRotorTheta = 360.0f;
+	if(m_fRotorTheta < -360.0f)
+		m_fRotorTheta = -360.0f;
 
 	// Don't run controllers if motor is disabled
 	if(!(Signal_GetMotorState() & MOTOR_MODE_ENABLE))
@@ -328,21 +404,21 @@ void Run_SVM(void)
 	else
 	{
 #ifdef TRAPZ
-		if(Clock_UpdateTimerUs(&speedTimerTrapz))
-		{
-			Hall_ComputeRPM(0.04f);
-			pi_speed_trapz.setPoint = Signal_GetMotorPWM();
-			m_fTrapzPwmVal = PID_Update(&pi_speed_trapz, Hall_GetRPM());
-//			m_fTrapzPwmVal = fabsf(Signal_GetMotorPWM()/100.0f);
-		}
-		return;
+//		if(Clock_UpdateTimerUs(&speedTimerTrapz))
+//		{
+//			Hall_ComputeRPM(0.04f);
+//			pi_speed_trapz.setPoint = Signal_GetMotorPWM();
+//			m_fTrapzPwmVal = PID_Update(&pi_speed_trapz, Hall_GetRPM());
+////			m_fTrapzPwmVal = fabsf(Signal_GetMotorPWM()/100.0f);
+//		}
+//		return;
 #endif
 	}
 
 	// Compute speed at a decimated rate
 	if(Clock_UpdateTimerUs(&speedTimer))
 	{
-		Hall_ComputeRPM(0.04f);
+		Hall_ComputeRPM(0.004f);
 
 		if((Signal_GetMotorState() & MOTOR_MODE_ENABLE))
 		{
@@ -354,15 +430,31 @@ void Run_SVM(void)
 
 			if(Signal_GetMotorState() & MOTOR_MODE_CRUISING)
 			{
+#ifdef TRAPZ
+				m_fTrapzPwmVal = Signal_GetMotorTorque();
+				return;
+#else
 				pi_speed.setPoint = Signal_GetMotorSpeed();
 				pi_axis_q.setPoint 	= PID_Update(&pi_speed, Hall_GetRPM());
-			}
-			else
-			{
-				pi_axis_q.setPoint 	= Signal_GetMotorTorque()/5.0f;
+#endif
 			}
 		}
 	}
+
+	if(!(Signal_GetMotorState() & MOTOR_MODE_CRUISING))
+	{
+#ifdef TRAPZ
+		m_fTrapzPwmVal = Signal_GetMotorTorque();
+		return;
+#else
+		static float torqBias = 0;
+		if(Signal_GetMotorTorque() < 1.0f && Hall_GetRPM() < 1.0f)
+			torqBias = torqBias*0.99999f + Signal_GetMotorTorque()*0.00001f;
+
+		pi_axis_q.setPoint 	= (Signal_GetMotorTorque() - torqBias)/2.0f;
+#endif
+	}
+
 
 	if(!(Signal_GetMotorState() & MOTOR_MODE_ENABLE))
 		return;

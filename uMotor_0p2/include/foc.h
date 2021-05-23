@@ -20,14 +20,14 @@
 
 #define DPS_TO_RPM(xx)		((xx) / 6.0f)
 #define MAX_SPEED			500.0f			// Maximum speed (RPM)
-#define MAX_CURRENT			10.0f			// Maximum current per phase (A)
+#define MAX_CURRENT			50.0f			// Maximum current per phase (A)
 
 #define Q_WIND		        1.0f
 #define D_WIND		        1.0f
-#define SPEED_WIND	        (MAX_CURRENT * 0.75f) // amps
+#define SPEED_WIND	        (MAX_CURRENT * 0.1f) // amps
 #define POS_WIND	        8000.0f // deg/s
-#define Kp			        0.050f
-#define Ki			        10.74399996f
+#define Kp			        0.030f
+#define Ki			        1.74399996f
 #define PID_FREQ	        4000.0f	// Hz
 
 
@@ -39,6 +39,7 @@
 //#define	SINE_MODULATION
 
 extern float m_fRotorThetaInit;
+extern float m_fRotorThetaNext;
 extern double m_fMechAngle;
 extern double m_fHomeOffset;
 extern double m_fMechAngleLast;
@@ -53,6 +54,9 @@ extern double velest;
 extern double velintegrator;
 extern float m_fRotorTheta;
 extern float m_fSupplyVolt;
+extern float m_fSupplyVoltInit;
+extern float m_fThrotVolt;
+
 
 extern float rotor_theta_init_L;
 extern int reversing;

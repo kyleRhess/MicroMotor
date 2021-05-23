@@ -91,6 +91,15 @@ int main(int argc, char* argv[])
 	//Encoder_Init();
 	//Encoder_ZInit();
 
+	// POWER_SW pin setup
+	GPIO_InitTypeDef gPwrPin;
+	gPwrPin.Pin 		= POWER_SW_PIN;
+	gPwrPin.Mode 		= GPIO_MODE_INPUT;
+	gPwrPin.Pull 		= GPIO_PULLDOWN;
+	gPwrPin.Speed 	= GPIO_SPEED_HIGH;
+	HAL_GPIO_Init(POWER_SW_PORT, &gPwrPin);
+
+
 #ifdef TRAPZ
 	GPIO_InitTypeDef gLowPin;
 	gLowPin.Pin = PIN_LOW_A|PIN_LOW_B|PIN_LOW_C;
@@ -137,24 +146,59 @@ int main(int argc, char* argv[])
 	HAL_TIM_PWM_Start(&PWMtimer.timer, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(&PWMtimer.timer, TIM_CHANNEL_3);
 
+	ClockTimer powerTimer;
+
 	while (1)
 	{
 		// TODO: Move Signal monitor elsewhere
+//		(Signal_GetMotorState() & MOTOR_MODE_NOHEART))
 		///////////////////////////////////////////////////////////
 		if((Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT) 	||
 		   (Signal_GetMotorState() & MOTOR_MODE_OVERSPEED)		||
-		   (Signal_GetMotorState() & MOTOR_MODE_NOHEART))
+		   (Signal_GetMotorState() & MOTOR_MODE_UNDERVOLT))
 		{
 			Signal_ClearMotorState(MOTOR_MODE_ENABLE);
 			System_WritePin(GPIOB, GPIO_DIS_PIN, 1);
 		}
 		else
 		{
-			if(Signal_GetMotorState() & MOTOR_MODE_ENABLE)
-				System_WritePin(GPIOB, GPIO_DIS_PIN, 0);
+			if(HAL_GPIO_ReadPin(POWER_SW_PORT, POWER_SW_PIN))
+			{
+				if(Signal_GetMotorState() & MOTOR_MODE_ENABLE)
+					System_WritePin(GPIOB, GPIO_DIS_PIN, 0);
+				else
+					System_WritePin(GPIOB, GPIO_DIS_PIN, 1);
+			}
 			else
+			{
 				System_WritePin(GPIOB, GPIO_DIS_PIN, 1);
+			}
 		}
+
+		if(!powerTimer.timerActive)
+		{
+			Clock_StartTimer(&powerTimer, 100);
+		}
+
+		if(Clock_UpdateTimer(&powerTimer))
+		{
+			if(HAL_GPIO_ReadPin(POWER_SW_PORT, POWER_SW_PIN))
+			{
+				//Signal_ResetMotor();
+				if(!(Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT) &&
+				   !(Signal_GetMotorState() & MOTOR_MODE_UNDERVOLT))
+				{
+					Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_ENABLE);
+				}
+			}
+			else
+			{
+				Signal_ClearMotorState(MOTOR_MODE_ENABLE);
+			}
+			Clock_StopTimer(&powerTimer);
+		}
+
+		Signal_SetMotorTorque(ADC_GetThrottle());
 
 		if(m_fSpeed < 0)
 			Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_REVERSING);
@@ -165,7 +209,6 @@ int main(int argc, char* argv[])
 			Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_NOHEART);
 		else
 			Signal_ClearMotorState(MOTOR_MODE_NOHEART);
-
 	}
 }
 

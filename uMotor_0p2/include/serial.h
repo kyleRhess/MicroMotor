@@ -9,8 +9,8 @@
 
 #define MSG_RATE_HZ(xxx) 		(SAMPLE_RATE / xxx)
 
-#define RX_BUFF_SZ 				34
-#define TX_BUFF_SZ 				34
+#define RX_BUFF_SZ 				42
+#define TX_BUFF_SZ 				42
 
 #define START_CHAR 				0xAA
 
@@ -20,7 +20,7 @@
 
 #define CMD_MOTOR_ENABLE		0x00000001
 #define CMD_MOTOR_DISABLE		0x00000002
-#define CMD_MOTOR_SPEED			0x00000004
+#define CMD_MOTOR_TORQUE		0x00000004
 #define CMD_MOTOR_MODE			0x00000008
 #define CMD_MOTOR_QUERY			0x00000010
 #define CMD_MOTOR_RESET			0x00000020
@@ -29,6 +29,7 @@
 #define CMD_MOTOR_HOME			0x00000100
 #define CMD_MOTOR_HEARTBEAT		0x00000200
 #define CMD_MOTOR_CRUISE		0x00000400
+#define CMD_MOTOR_SPEED			0x00000800
 
 
 typedef struct DataFields
@@ -36,10 +37,12 @@ typedef struct DataFields
 	float		torqueValue; 	// 1
 	float		speedValue;		// 2
 	float		posValue;		// 3
-	uint32_t	driveMode;		// 4
-	uint32_t	millis;			// 5
-	uint8_t		parmID;			// 6
-	float		parmValue;		// 7
+	float		motorCurrent;	// 4
+	float		battVoltage;	// 4
+	uint32_t	driveMode;		// 5
+	uint32_t	millis;			// 6
+	uint8_t		parmID;			// 7
+	float		parmValue;		// 8
 } __attribute__((__packed__)) DataFields;
 
 int Serial_InitPort(uint32_t baudrate, uint32_t stopbits, uint32_t datasize, uint32_t parity);

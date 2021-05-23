@@ -33,10 +33,24 @@ void Clock_StartTimerUs(ClockTimerus *ct, uint32_t periodUs)
 	ct->timerActive 	= 1;
 }
 
+void Clock_StopTimer(ClockTimer *ct)
+{
+	ct->timerActive 	= 0;
+}
+
+void Clock_StopTimerUs(ClockTimerus *ct)
+{
+	ct->timerActive		= 0;
+}
+
 int Clock_UpdateTimer(ClockTimer *ct)
 {
 	int rc = 0;
-	if((timeElapMs - ct->timeMsLast) >= ct->timeRemaining)
+	if(!ct->timerActive)
+	{
+		return 0;
+	}
+	else if((timeElapMs - ct->timeMsLast) >= ct->timeRemaining)
 	{
 		ct->timeMsLast = Clock_GetMs();
 		rc = 1;
@@ -47,7 +61,11 @@ int Clock_UpdateTimer(ClockTimer *ct)
 int Clock_UpdateTimerUs(ClockTimerus *ct)
 {
 	int rc = 0;
-	if((timeElapUs - ct->timeUsLast) >= ct->timeRemaining)
+	if(!ct->timerActive)
+	{
+		return 0;
+	}
+	else if((timeElapUs - ct->timeUsLast) >= ct->timeRemaining)
 	{
 		ct->timeUsLast = Clock_GetUs();
 		rc = 1;

@@ -112,31 +112,31 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 #else
 	if(a_state == 1 && b_state == 0 && c_state == 0)
 	{
-		m_fRotorThetaInit = 0.0f;
+		m_fRotorThetaNext = 0.0f;
 	}
 	else if(a_state == 1 && b_state == 1 && c_state == 0)
 	{
-		m_fRotorThetaInit = 60.0f;
+		m_fRotorThetaNext = 60.0f;
 	}
 	else if(a_state == 0 && b_state == 1 && c_state == 0)
 	{
-		m_fRotorThetaInit = 120.0f;
+		m_fRotorThetaNext = 120.0f;
 	}
 	else if(a_state == 0 && b_state == 1 && c_state == 1)
 	{
-		m_fRotorThetaInit = 180.0f;
+		m_fRotorThetaNext = 180.0f;
 	}
 	else if(a_state == 0 && b_state == 0 && c_state == 1)
 	{
-		m_fRotorThetaInit = 240.0f;
+		m_fRotorThetaNext = 240.0f;
 	}
 	else if(a_state == 1 && b_state == 0 && c_state == 1)
 	{
-		m_fRotorThetaInit = 300.0f;
+		m_fRotorThetaNext = 300.0f;
 	}
 #endif
 
-	if((rotor_theta_init_L - m_fRotorThetaInit) == 60 || (rotor_theta_init_L - m_fRotorThetaInit) == -300)
+	if((rotor_theta_init_L - m_fRotorThetaNext) == 60 || (rotor_theta_init_L - m_fRotorThetaNext) == -300)
 	{
 		reversing = 1;
 	}
@@ -145,8 +145,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		reversing = 0;
 	}
 
-	rotor_theta_init_L 	= m_fRotorThetaInit;
-	m_fMechAngle 		= 0;
+	rotor_theta_init_L 	= m_fRotorThetaNext;
 	mechAngleoffset 	= -((float)Encoder_GetAngle() * 4.0f);
 
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);

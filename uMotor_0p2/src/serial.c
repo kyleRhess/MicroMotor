@@ -12,11 +12,15 @@ static UART_HandleTypeDef 	s_UARTHandle = { .Instance = USART1 };
 static DMA_HandleTypeDef 	hdma_usart1_rx;
 static DMA_HandleTypeDef 	hdma_usart1_tx;
 
-static uint8_t 				uartRxBuff[RX_BUFF_SZ];
+static uint8_t 				uartRxBuff[RX_BUFF_SZ*10];
 static uint8_t 				uartTxBuff[TX_BUFF_SZ];
 
 static DataFields 			txCmdData;
 static DataFields 			rxCmdData;
+
+static uint32_t 			rIdx = 0;
+static uint32_t 			wIdx = 0;
+
 
 static uint32_t crc32_for_byte(uint32_t r)
 {
@@ -47,17 +51,22 @@ static uint32_t proc_command(uint32_t command)
 			break;
 		case CMD_MOTOR_QUERY:
 			rc = command;
-			txCmdData.torqueValue 	= txCmdData.torqueValue*0.9f + fabsf(m_fCurrentA)*0.1f;
-			txCmdData.driveMode 	= Signal_GetMotorState();
-			txCmdData.speedValue 	= Hall_GetRPM();
-			txCmdData.millis 		= Clock_GetMs();
 			Signal_SetHeartBeatMs(Clock_GetMs());
+			txCmdData.torqueValue 	= txCmdData.torqueValue*0.9f + fabsf(m_fCurrentA)*0.1f;
+			txCmdData.speedValue	= 0.0012459f * Hall_GetRPM()*60;
+			txCmdData.posValue		= m_fRotorTheta;
+			txCmdData.motorCurrent	= m_fCurrentA;
+			txCmdData.battVoltage	= m_fSupplyVolt;
+			txCmdData.driveMode 	= Signal_GetMotorState();
+			txCmdData.millis 		= Clock_GetMs();
+			txCmdData.parmID 		= 0;
+			txCmdData.parmValue 	= 0;
 			break;
 		case CMD_MOTOR_ENABLE:
 			rc = command;
 			Signal_ResetMotor();
 			if(!(Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT) &&
-			   !(Signal_GetMotorState() & MOTOR_MODE_OVERCURRENT))
+			   !(Signal_GetMotorState() & MOTOR_MODE_UNDERVOLT))
 			{
 				Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_ENABLE);
 			}
@@ -66,9 +75,9 @@ static uint32_t proc_command(uint32_t command)
 			rc = command;
 			Signal_ClearMotorState(MOTOR_MODE_ENABLE);
 			break;
-		case CMD_MOTOR_SPEED:
+		case CMD_MOTOR_TORQUE:
 			rc = command;
-			memcpy(&rxCmdData, &uartRxBuff[1+4], sizeof(rxCmdData));
+			memcpy(&rxCmdData, &uartRxBuff[rIdx+1+4], sizeof(rxCmdData));
 			Signal_SetMotorTorque(rxCmdData.torqueValue);
 			break;
 		case CMD_MOTOR_HOME:
@@ -84,19 +93,33 @@ static uint32_t proc_command(uint32_t command)
 				Signal_SetMotorState(Signal_GetMotorState() | MOTOR_MODE_CRUISING);
 			}
 			break;
+		case CMD_MOTOR_SPEED:
+			rc = command;
+			memcpy(&rxCmdData, &uartRxBuff[rIdx+1+4], sizeof(rxCmdData));
+			Signal_SetMotorSpeed(rxCmdData.speedValue);
+			break;
 		case CMD_MOTOR_POSITION:
 			rc = command;
-			memcpy(&rxCmdData, &uartRxBuff[1+4], sizeof(rxCmdData));
+			memcpy(&rxCmdData, &uartRxBuff[rIdx+1+4], sizeof(rxCmdData));
 			Signal_SetMotorPos(rxCmdData.posValue);
 			break;
 		case CMD_MOTOR_PARMS:
 			rc = command;
-			memcpy(&rxCmdData, &uartRxBuff[1+4], sizeof(rxCmdData));
+			memcpy(&rxCmdData, &uartRxBuff[rIdx+1+4], sizeof(rxCmdData));
 			Signal_SetParam(rxCmdData.parmID, rxCmdData.parmValue);
 			break;
 		case CMD_MOTOR_HEARTBEAT:
 			rc = command;
 			Signal_SetHeartBeatMs(Clock_GetMs());
+			txCmdData.torqueValue 	= txCmdData.torqueValue*0.9f + fabsf(m_fCurrentA)*0.1f;
+			txCmdData.speedValue	= 0.0012459f * Hall_GetRPM()*60;
+			txCmdData.posValue		= m_fRotorTheta;
+			txCmdData.motorCurrent	= m_fCurrentA;
+			txCmdData.battVoltage	= m_fSupplyVolt;
+			txCmdData.driveMode 	= Signal_GetMotorState();
+			txCmdData.millis 		= Clock_GetMs();
+			txCmdData.parmID 		= 0;
+			txCmdData.parmValue 	= 0;
 			break;
 		case CMD_MOTOR_CRUISE:
 			rc = command;
@@ -116,6 +139,7 @@ static uint32_t proc_command(uint32_t command)
 	return rc;
 }
 
+static int nak_tries = 0;
 static void tx_ack(uint32_t *command)
 {
 	uint32_t txCrc = 0;
@@ -129,14 +153,15 @@ static void tx_ack(uint32_t *command)
 	memcpy(&uartTxBuff[TX_BUFF_SZ-4], &txCrc, 4);
 
 	Serial_TxData(TX_BUFF_SZ);
+	nak_tries = 0;
 }
 
 static void tx_nak(void)
 {
 	uint32_t txCrc = 0;
+	uint32_t nakVal = 0xFFFFAAAA;
 
 	uartTxBuff[0] = START_CHAR;
-	uint32_t nakVal = 0xFFFFAAAA;
 	memcpy(&uartTxBuff[1], &nakVal, 4);
 
 	crc32(&uartTxBuff[0], TX_BUFF_SZ-4, &txCrc);
@@ -144,6 +169,7 @@ static void tx_nak(void)
 	memcpy(&uartTxBuff[TX_BUFF_SZ-4], &txCrc, 4);
 
 	Serial_TxData(TX_BUFF_SZ);
+	nak_tries++;
 }
 
 static void Serial_DMA_Init(void)
@@ -181,7 +207,7 @@ int Serial_InitPort(uint32_t baudrate, uint32_t stopbits, uint32_t datasize, uin
 
 void Serial_RxData(uint16_t Size)
 {
-	HAL_UART_Receive_DMA(&s_UARTHandle, uartRxBuff, Size);
+	HAL_UART_Receive_DMA(&s_UARTHandle, &uartRxBuff[rIdx], Size);
 }
 
 void Serial_TxData(uint16_t Size)
@@ -194,10 +220,10 @@ void Serial_TxData2(uint8_t *txBuff, uint16_t Size)
 	uint32_t txCrc = 0;
 	crc32(&txBuff[0], Size, &txCrc);
 
-	txCrc = 0xAFAFAFAF;
-	memcpy(&txBuff[Size], &txCrc, 4);
+//	txCrc = 0xAFAFAFAF;
+//	memcpy(&txBuff[Size], &txCrc, 4);
 
-	HAL_UART_Transmit_DMA(&s_UARTHandle, txBuff, Size+4);
+	HAL_UART_Transmit_DMA(&s_UARTHandle, txBuff, Size);
 }
 
 void Serial_TxQuery(void)
@@ -215,23 +241,31 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	uint32_t thiscrc = 0;
 	uint32_t rxCrc = 0;
 
+	return;
+
 	// start, data...data, checksum
-	if(uartRxBuff[0] == START_CHAR)
+	while(uartRxBuff[rIdx] != START_CHAR && rIdx < (sizeof(uartRxBuff)/sizeof(uartRxBuff[0]))-RX_BUFF_SZ)
+	{
+		rIdx++;
+	}
+
+	// start, data...data, checksum
+	if(uartRxBuff[rIdx] == START_CHAR)
 	{
 		// Compute 32-bit CRC
-		crc32(&uartRxBuff[0], RX_BUFF_SZ-4, &thiscrc);
+		crc32(&uartRxBuff[rIdx], RX_BUFF_SZ-4, &thiscrc);
 
 		// Get CRC from message
-		rxCrc = (uartRxBuff[RX_BUFF_SZ - 4] << 24) |
-				(uartRxBuff[RX_BUFF_SZ - 3] << 16) |
-				(uartRxBuff[RX_BUFF_SZ - 2] << 8) |
-				(uartRxBuff[RX_BUFF_SZ - 1] << 0);
+		rxCrc = (uartRxBuff[rIdx+RX_BUFF_SZ - 4] << 24) |
+				(uartRxBuff[rIdx+RX_BUFF_SZ - 3] << 16) |
+				(uartRxBuff[rIdx+RX_BUFF_SZ - 2] << 8) |
+				(uartRxBuff[rIdx+RX_BUFF_SZ - 1] << 0);
 
 		// Compare CRC's
 		if(thiscrc == rxCrc && rxCrc != 0)
 		{
 			uint32_t command = 0;
-			memcpy(&command, &uartRxBuff[1], 4);
+			memcpy(&command, &uartRxBuff[rIdx+1], 4);
 
 			if(proc_command(command) == command)
 				tx_ack(&command);
@@ -243,8 +277,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 			tx_nak();
 		}
 	}
+	else
+	{
+		tx_nak();
+	}
 
-	HAL_UART_Receive_DMA(huart, &uartRxBuff[0], RX_BUFF_SZ);
+	if(rIdx >= (sizeof(uartRxBuff)/sizeof(uartRxBuff[0]))-RX_BUFF_SZ)
+		rIdx = 0;
+
+	HAL_UART_Receive_DMA(huart, &uartRxBuff[rIdx], RX_BUFF_SZ);
 }
 
 #if 0
@@ -268,6 +309,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 	__NOP();
 }
 #endif
+
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
 {
