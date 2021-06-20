@@ -147,6 +147,7 @@ int main(int argc, char* argv[])
 	HAL_TIMEx_PWMN_Start(&PWMtimer.timer, TIM_CHANNEL_3);
 
 	ClockTimer powerTimer;
+	Clock_StartTimer(&powerTimer, 100);
 
 	while (1)
 	{
