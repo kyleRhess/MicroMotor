@@ -270,7 +270,6 @@ void Run_SVM(void)
 		txCmdData.torqueReq 	= pi_axis_q.setPoint;
 		txCmdData.torqueValue 	= m_fIq;
 
-
 		char str[128] = {0};
 		sprintf(str, "%.3f,%.2f,%.2f,%.2f,%.2f,%08X,%.1f\n",
 				m_fRotorTheta,
@@ -290,7 +289,6 @@ void Run_SVM(void)
 
 		memcpy(&uartTxBuff[0], &str, chars+1);
 		Serial_TxData2(uartTxBuff, chars+1);
-
 
 //		static uint32_t lllsl = 0;
 //		static int fwd = -1;
@@ -377,11 +375,8 @@ void Run_SVM(void)
 	if(m_fMechAngle < -60.0f)
 		m_fMechAngle = -60.0f;
 
-
 	// Convert rotor angle to electrical angle
 	m_fRotorTheta  	= m_fRotorThetaInit + (float)(m_fMechAngle*24.0f - 0) - 90.0f;
-
-
 
 	if(m_fRotorTheta > 360.0f)
 		m_fRotorTheta = 360.0f;
@@ -451,7 +446,7 @@ void Run_SVM(void)
 		if(Signal_GetMotorTorque() < 1.0f && Hall_GetRPM() < 1.0f)
 			torqBias = torqBias*0.99999f + Signal_GetMotorTorque()*0.00001f;
 
-		pi_axis_q.setPoint 	= (Signal_GetMotorTorque() - torqBias)/2.0f;
+		pi_axis_q.setPoint 	= (Signal_GetMotorTorque() - torqBias) / 2.0f;
 #endif
 	}
 
